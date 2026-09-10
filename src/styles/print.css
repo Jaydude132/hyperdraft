@@ -1,0 +1,127 @@
+/*
+ * Output pagination.
+ *
+ * At print time the screen's measured page breaks are irrelevant — the browser
+ * repaginates the continuous flow itself against the `@page` box below. The
+ * two engines agree because they use the same geometry (1in margins, US
+ * Letter) and the same break rules.
+ */
+
+@media print {
+  /* The default. The application rewrites this at runtime to match the page
+     size on screen (see io/pageBox.ts), and a saved file carries its own copy
+     of the rule, so this value only applies to a document that never chose. */
+  @page {
+    size: Letter;
+    margin: 1in;
+  }
+
+  /* The app shell is a fixed-height grid with a scrolling canvas. Left alone
+     it clips the printed document to a single viewport-sized page. */
+  html,
+  body,
+  #root,
+  .app {
+    background: #fff !important;
+    display: block !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Application chrome and the screen-only page furniture. */
+  .app-titlebar,
+  .app-ribbon,
+  .app-toolbar,
+  .app-subribbon,
+  .hwp-codeblock-bar,
+  .ctx-menu,
+  .panel,
+  .app-statusbar,
+  dialog,
+  .hwp-sheet-layer,
+  .hwp-mask-layer,
+  .hwp-grip-layer,
+  .hwp-page-spacer {
+    display: none !important;
+  }
+
+  /* The screen's own page breaks must leave no trace on paper: the browser
+     repaginates the flow itself, and spacing injected for the editor would be
+     counted twice and push the document onto extra pages. */
+  html:not(.hwp-exporting) .hwp-doc tr.hwp-row-break {
+    --row-pad: 0px !important;
+  }
+
+  /* Collapse the fixed-width editing column; the page box owns the margins. */
+  .app-canvas,
+  .hwp-page-stack {
+    background: #fff !important;
+    display: block !important;
+    width: auto !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  .hwp-doc .ProseMirror,
+  .hwp-doc {
+    width: auto !important;
+    min-height: 0 !important;
+    box-shadow: none !important;
+  }
+
+  /* Break rules — the print-side counterpart of the screen measurement. */
+  .hwp-doc h1,
+  .hwp-doc h2,
+  .hwp-doc h3,
+  .hwp-doc h4,
+  .hwp-doc h5,
+  .hwp-doc h6 {
+    break-after: avoid;
+    break-inside: avoid;
+  }
+
+  /* Must match MIN_LINES in pagination.ts, or a paragraph breaks in a
+     different place on paper than it does on screen. */
+  .hwp-doc p {
+    orphans: 2;
+    widows: 2;
+  }
+
+  /* Code blocks are free to break: the screen splits them at a line, so the
+     paper must too or the two page counts drift apart. */
+  .hwp-doc .hwp-callout,
+  .hwp-doc .hwp-raw,
+  .hwp-doc figure,
+  .hwp-doc tr {
+    break-inside: avoid;
+  }
+
+  .hwp-doc pre {
+    orphans: 2;
+    widows: 2;
+  }
+
+  .hwp-doc thead {
+    display: table-header-group;
+  }
+
+  .hwp-doc .hwp-hard-break {
+    break-after: page;
+    border: 0 !important;
+  }
+
+  /* The live header controls are hidden above; bring back the labels they
+     stand in for so a printed block still says what it is. */
+  .hwp-doc .hwp-codeblock pre[data-language]::before { content: attr(data-language); }
+  .hwp-doc .hwp-codeblock pre[data-filename]::after { content: attr(data-filename); }
+
+  .hwp-doc a {
+    color: inherit;
+    border-bottom-color: #bbb;
+  }
+}

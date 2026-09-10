@@ -1,0 +1,1208 @@
+/* Application chrome. The document's own styles live in styles/document.css. */
+
+:root {
+  --ui-font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+
+  --chrome: #f7f8fa;
+  --chrome-sunken: #eceef2;
+  --chrome-raised: #ffffff;
+  --chrome-line: #dcdfe6;
+  --chrome-line-soft: #e6e9ee;
+  --chrome-ink: #1c1f26;
+  --chrome-ink-soft: #626a78;
+  --chrome-ink-faint: #8a919e;
+  --chrome-hover: #e8ebf0;
+  --chrome-active: #dde2ea;
+  --accent: #2f5fd0;
+  --accent-soft: #e5ecfb;
+  --canvas: #e4e7ec;
+  --sheet-shadow: 0 1px 2px rgba(20, 24, 33, 0.09), 0 6px 22px rgba(20, 24, 33, 0.08);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-ui="light"]) {
+    --chrome: #1b1d22;
+    --chrome-sunken: #16181c;
+    --chrome-raised: #23262c;
+    --chrome-line: #32363e;
+    --chrome-line-soft: #2a2e35;
+    --chrome-ink: #e8eaee;
+    --chrome-ink-soft: #a1a8b4;
+    --chrome-ink-faint: #767d89;
+    --chrome-hover: #2b2f37;
+    --chrome-active: #353a44;
+    --accent: #6f9bff;
+    --accent-soft: #24314e;
+    --canvas: #101216;
+    --sheet-shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 8px 28px rgba(0, 0, 0, 0.45);
+  }
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--ui-font);
+  color: var(--chrome-ink);
+  background: var(--canvas);
+  -webkit-font-smoothing: antialiased;
+}
+
+.app {
+  position: relative;
+  display: grid;
+  /* minmax(0, 1fr), not 1fr: a grid track sizes to its content by default, so
+     a wide ribbon would stretch the whole application and scroll the page
+     sideways instead of scrolling within itself. */
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto 1fr auto;
+  height: 100%;
+  overflow: hidden;
+}
+.app > * { min-width: 0; }
+
+/* --- Title bar ----------------------------------------------------------- */
+
+.app-titlebar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px;
+  height: 42px;
+  background: var(--chrome);
+  border-bottom: 1px solid var(--chrome-line);
+}
+
+.app-mark {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  color: var(--accent);
+  flex: none;
+}
+
+.app-title {
+  font-size: 13px;
+  font-weight: 560;
+  letter-spacing: -0.005em;
+  color: var(--chrome-ink);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  padding: 3px 7px;
+  margin-left: -3px;
+  min-width: 6ch;
+  width: 30ch;
+  font-family: inherit;
+}
+.app-title:hover { border-color: var(--chrome-line); }
+.app-title:focus { outline: none; border-color: var(--accent); background: var(--chrome-raised); }
+
+.app-titlebar-spacer { flex: 1; }
+
+/* --- Toolbar -------------------------------------------------------------- */
+
+/* Two rows by default, scrolling sideways as one unit when they overflow. */
+.app-toolbar {
+  display: block;
+  padding: 4px 10px 5px;
+  background: var(--chrome);
+  border-bottom: 1px solid var(--chrome-line);
+}
+
+.tb-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-wrap: nowrap;
+  width: max-content;
+  min-width: 100%;
+  padding: 2px 0;
+}
+.tb-row > * { flex: none; }
+
+.tb-sep {
+  width: 1px;
+  align-self: stretch;
+  margin: 3px 6px;
+  background: var(--chrome-line);
+  flex: none;
+}
+
+.tb-btn {
+  display: inline-grid;
+  grid-auto-flow: column;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  min-width: 28px;
+  padding: 0 6px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: none;
+  color: var(--chrome-ink-soft);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+.tb-btn:hover { background: var(--chrome-hover); color: var(--chrome-ink); }
+.tb-btn:active { background: var(--chrome-active); }
+.tb-btn[aria-pressed="true"] {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 25%, transparent);
+}
+.tb-btn:disabled { opacity: 0.38; cursor: default; background: none; }
+.tb-btn svg { display: block; }
+
+.tb-label { font-weight: 550; }
+
+/* Letterform icons — B / I / U / H1 — the way a word processor draws them. */
+.tb-glyph {
+  font-family: "Charter", "Iowan Old Style", Georgia, serif;
+  font-size: 14px;
+  line-height: 1;
+  width: 16px;
+  text-align: center;
+}
+.tb-glyph--b { font-weight: 700; }
+.tb-glyph--i { font-style: italic; }
+.tb-glyph--u { text-decoration: underline; text-underline-offset: 2px; }
+.tb-glyph--h { font-size: 12px; font-weight: 650; width: 18px; letter-spacing: -0.03em; }
+
+.tb-select {
+  height: 28px;
+  border: 1px solid var(--chrome-line);
+  border-radius: 6px;
+  background: var(--chrome-raised);
+  color: var(--chrome-ink);
+  font-family: inherit;
+  font-size: 12px;
+  padding: 0 6px;
+  cursor: pointer;
+}
+.tb-select:focus { outline: none; border-color: var(--accent); }
+
+/* --- Canvas and sheets ---------------------------------------------------- */
+
+.app-canvas {
+  overflow: auto;
+  background: var(--canvas);
+  display: flex;
+  justify-content: center;
+  padding: 40px 40px 60px;
+}
+
+.hwp-page-stack {
+  position: relative;
+  flex: none;
+  width: var(--content-w);
+  margin: var(--margin) 0;
+}
+
+.hwp-sheet-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.hwp-sheet {
+  position: absolute;
+  left: calc(-1 * var(--margin));
+  width: var(--page-w);
+  height: var(--page-h);
+  top: calc(var(--sheet-index) * var(--stride) - var(--margin));
+  background: #fff;
+  border-radius: 2px;
+  box-shadow: var(--sheet-shadow);
+}
+
+.hwp-sheet::after {
+  content: attr(data-page);
+  position: absolute;
+  right: calc(-1 * var(--margin) + 4px);
+  bottom: -22px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--chrome-ink-faint);
+}
+
+/* The editable flow sits on top of the sheets, transparent, one column wide. */
+.hwp-page-stack .ProseMirror {
+  position: relative;
+  z-index: 1;
+  width: var(--content-w);
+  min-height: var(--content-h);
+  outline: none;
+  background: none;
+}
+
+/* Spacers punch the flow across a sheet boundary. They are decorations, not
+   document content: they never save, never print, never enter undo. */
+.hwp-page-spacer {
+  display: block;
+  width: 100%;
+  pointer-events: none;
+  user-select: none;
+}
+
+.ProseMirror .hwp-hard-break {
+  cursor: pointer;
+}
+.ProseMirror-selectednode {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Tiptap table affordances */
+.ProseMirror .selectedCell::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  pointer-events: none;
+}
+.ProseMirror .column-resize-handle {
+  position: absolute;
+  right: -2px;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--accent);
+  pointer-events: none;
+}
+.ProseMirror.resize-cursor { cursor: col-resize; }
+
+/* --- Status bar ----------------------------------------------------------- */
+
+.app-statusbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  height: 26px;
+  padding: 0 12px;
+  background: var(--chrome);
+  border-top: 1px solid var(--chrome-line);
+  font-size: 11px;
+  color: var(--chrome-ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+.app-statusbar strong { font-weight: 560; color: var(--chrome-ink-soft); }
+.app-statusbar-spacer { flex: 1; }
+
+/* --- Markup editor dialog -------------------------------------------------- */
+
+.app-dialog {
+  border: 1px solid var(--chrome-line);
+  border-radius: 12px;
+  background: var(--chrome-raised);
+  color: var(--chrome-ink);
+  padding: 18px 20px 16px;
+  width: min(680px, 88vw);
+  box-shadow: 0 18px 48px rgba(10, 14, 22, 0.28);
+}
+.app-dialog::backdrop { background: rgba(12, 16, 24, 0.32); }
+.app-dialog h2 { margin: 0 0 4px; font-size: 14px; font-weight: 600; }
+.app-dialog p { margin: 0 0 12px; font-size: 12px; color: var(--chrome-ink-faint); }
+.app-dialog textarea {
+  width: 100%;
+  height: 300px;
+  resize: vertical;
+  font-family: "SF Mono", ui-monospace, Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.55;
+  padding: 10px 12px;
+  border: 1px solid var(--chrome-line);
+  border-radius: 8px;
+  background: var(--chrome-sunken);
+  color: var(--chrome-ink);
+  tab-size: 2;
+}
+.app-dialog textarea:focus { outline: none; border-color: var(--accent); }
+.app-dialog--wide { width: min(1020px, 94vw); }
+.app-dialog-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+.app-dialog-head .tb-btn { height: 28px; padding: 0 10px; gap: 6px; border-color: var(--chrome-line); }
+.app-dialog-head .tb-btn.is-on { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+.app-dialog-body { display: flex; align-items: stretch; gap: 14px; }
+.app-dialog-body textarea { flex: 1 1 auto; min-width: 0; }
+
+/* --- SVG cheat sheet -------------------------------------------------------
+   Sits beside the markup editor and stretches to whatever height the textarea
+   has been dragged to, scrolling within it. */
+.cheat {
+  flex: 0 0 320px;
+  /* Capped rather than stretched: left alone this panel is far taller than the
+     editor beside it, and a flex row takes the height of its tallest item —
+     the dialog grew past the window instead of the list scrolling. */
+  max-height: 300px;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 11px 13px 13px;
+  border: 1px solid var(--chrome-line);
+  border-radius: 8px;
+  background: var(--chrome-sunken);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+.cheat h3 {
+  margin: 15px 0 7px;
+  font-size: 10px;
+  font-weight: 640;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--chrome-ink-faint);
+}
+.cheat h3:first-child { margin-top: 0; }
+.cheat code {
+  display: inline-block;
+  padding: 1px 5px;
+  border: 1px solid var(--chrome-line);
+  border-radius: 4px;
+  background: var(--chrome-raised);
+  color: var(--chrome-ink);
+  font-family: "SF Mono", ui-monospace, Menlo, monospace;
+  font-size: 10.5px;
+  line-height: 1.5;
+}
+.cheat-row { margin-bottom: 8px; }
+.cheat-row > span { display: block; margin-top: 2px; color: var(--chrome-ink-faint); }
+.cheat-row > span span { display: inline; }
+.cheat-row > span code { margin: 0 1px; }
+
+.cheat-snippets { display: grid; gap: 6px; }
+.cheat-snippet {
+  padding: 7px 9px;
+  border: 1px solid var(--chrome-line);
+  border-radius: 7px;
+  background: var(--chrome-raised);
+  color: var(--chrome-ink);
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 550;
+  text-align: left;
+  cursor: pointer;
+}
+.cheat-snippet:hover { border-color: var(--accent); color: var(--accent); }
+.cheat-snippet span {
+  display: block;
+  margin-top: 1px;
+  font-weight: 400;
+  font-size: 10.5px;
+  color: var(--chrome-ink-faint);
+}
+.cheat-snippet:hover span { color: var(--chrome-ink-soft); }
+
+.app-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+.app-dialog-actions .tb-btn {
+  height: 30px;
+  padding: 0 14px;
+  border-color: var(--chrome-line);
+  color: var(--chrome-ink);
+}
+.tb-btn--primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.tb-btn--primary:hover { background: color-mix(in srgb, var(--accent) 88%, #000); color: #fff; }
+
+/* --- Context menu ---------------------------------------------------------- */
+
+.ctx-menu {
+  position: fixed;
+  z-index: 60;
+  min-width: 216px;
+  padding: 5px;
+  border: 1px solid var(--chrome-line);
+  border-radius: 10px;
+  background: var(--chrome-raised);
+  box-shadow: 0 12px 34px rgba(10, 14, 22, 0.22), 0 2px 6px rgba(10, 14, 22, 0.1);
+}
+
+.ctx-item {
+  display: grid;
+  grid-template-columns: 18px 1fr auto;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  height: 28px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--chrome-ink);
+  font-family: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+}
+.ctx-item:hover:not(:disabled) { background: var(--accent); color: #fff; }
+.ctx-item:hover:not(:disabled) .ctx-hint { color: rgba(255, 255, 255, 0.75); }
+.ctx-item:disabled { opacity: 0.36; cursor: default; }
+.ctx-item--danger:hover:not(:disabled) { background: #c0392b; }
+
+.ctx-icon { display: grid; place-items: center; color: currentColor; opacity: 0.85; }
+.ctx-hint { font-size: 11px; color: var(--chrome-ink-faint); font-variant-numeric: tabular-nums; }
+.ctx-sep { height: 1px; margin: 5px 8px; background: var(--chrome-line); }
+.ctx-heading {
+  padding: 7px 8px 3px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--chrome-ink-faint);
+}
+
+/* --- Insert-table grid picker ---------------------------------------------- */
+
+.grid-picker {
+  z-index: 80;
+  padding: 9px;
+  border: 1px solid var(--chrome-line);
+  border-radius: 10px;
+  background: var(--chrome-raised);
+  box-shadow: 0 12px 34px rgba(10, 14, 22, 0.2);
+}
+.grid-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(10, 17px);
+  grid-auto-rows: 17px;
+  gap: 3px;
+}
+.grid-cell {
+  border: 1px solid var(--chrome-line);
+  border-radius: 3px;
+  background: var(--chrome-sunken);
+  padding: 0;
+  cursor: pointer;
+}
+.grid-cell--on { background: var(--accent-soft); border-color: var(--accent); }
+.grid-picker-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 9px;
+  font-size: 11.5px;
+  color: var(--chrome-ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+.grid-picker-toggle { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
+
+/* --- Borders & shading panel ------------------------------------------------ */
+
+.panel {
+  position: absolute;
+  top: 88px;
+  right: 22px;
+  z-index: 50;
+  width: 296px;
+  max-height: calc(100% - 130px);
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--chrome-line);
+  border-radius: 12px;
+  background: var(--chrome-raised);
+  box-shadow: 0 16px 44px rgba(10, 14, 22, 0.24);
+  overflow: hidden;
+}
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 12px 10px 14px;
+  border-bottom: 1px solid var(--chrome-line);
+}
+.panel-head h2 { margin: 0; font-size: 13px; font-weight: 600; }
+.panel-close {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--chrome-ink-faint);
+  cursor: pointer;
+}
+.panel-close:hover { background: var(--chrome-hover); color: var(--chrome-ink); }
+
+.panel-preview {
+  padding: 16px 14px;
+  background: #fff;
+  border-bottom: 1px solid var(--chrome-line);
+}
+.panel-preview table { font-size: 10px; }
+.panel-preview th, .panel-preview td { padding: 4px 7px; }
+
+.panel-body { padding: 12px 14px 14px; overflow-y: auto; }
+.panel-field { margin-bottom: 13px; }
+.panel-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 11px;
+  font-weight: 560;
+  color: var(--chrome-ink-soft);
+}
+
+.segmented { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 3px; }
+.segment {
+  height: 26px;
+  border: 1px solid var(--chrome-line);
+  border-radius: 6px;
+  background: var(--chrome-sunken);
+  color: var(--chrome-ink-soft);
+  font-family: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+.segment:hover { background: var(--chrome-hover); }
+.segment--on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 550; }
+
+.swatches { display: flex; flex-wrap: wrap; gap: 5px; }
+.swatch {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--chrome-line);
+  border-radius: 5px;
+  cursor: pointer;
+  position: relative;
+}
+.swatch--on { box-shadow: 0 0 0 2px var(--accent); border-color: var(--accent); }
+.swatch--none { background: var(--chrome-sunken); overflow: hidden; }
+.swatch--none::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top right, transparent 46%, #c0392b 46%, #c0392b 54%, transparent 54%);
+}
+.swatch--custom {
+  display: grid;
+  place-items: center;
+  background: conic-gradient(from 210deg, #e74c3c, #f1c40f, #2ecc71, #3498db, #9b59b6, #e74c3c);
+  overflow: hidden;
+}
+.swatch--custom input { opacity: 0; width: 100%; height: 100%; cursor: pointer; }
+
+.panel-slider { display: flex; align-items: center; gap: 9px; }
+.panel-slider input[type="range"] { flex: 1; accent-color: var(--accent); }
+.panel-slider output {
+  min-width: 42px;
+  text-align: right;
+  font-size: 11.5px;
+  color: var(--chrome-ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+.panel-check {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 13px;
+  font-size: 12px;
+  color: var(--chrome-ink);
+  cursor: pointer;
+}
+.panel-check input { accent-color: var(--accent); }
+.panel-note { margin: -6px 0 13px; font-size: 11px; line-height: 1.45; color: var(--chrome-ink-faint); }
+.panel-note--wide { margin: 2px 0 13px; }
+
+/* Sections. Grouping the controls the way Word does makes the two scopes
+   legible at a glance: borders and shading follow the selection, while
+   anything under a "Whole table" tag cannot be aimed at particular cells. */
+.panel-section + .panel-section {
+  margin-top: 2px;
+  padding-top: 13px;
+  border-top: 1px solid var(--chrome-line);
+}
+.panel-section-title {
+  display: flex;
+  align-items: center;
+  margin: 0 0 10px;
+  font-size: 10.5px;
+  font-weight: 640;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--chrome-ink-faint);
+}
+.panel-section-tag {
+  margin-left: auto;
+  padding: 1px 7px;
+  border: 1px solid var(--chrome-line);
+  border-radius: 999px;
+  background: var(--chrome-sunken);
+  font-size: 9.5px;
+  font-weight: 560;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+.panel-reset { width: 100%; height: 30px; border-color: var(--chrome-line); }
+
+/* --- Table style gallery ---------------------------------------------------
+   Each card is a real table drawn through the document stylesheet, scaled
+   down. Scaling rather than re-specifying is what keeps a card honest: the
+   radius, banding and rules on the card are the same declarations the
+   document will get, just smaller. */
+.preset-gallery {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px 6px;
+  margin-bottom: 11px;
+}
+.preset-card {
+  display: grid;
+  gap: 4px;
+  padding: 4px 3px 3px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: none;
+  font-family: inherit;
+  cursor: pointer;
+}
+.preset-card:hover { background: var(--chrome-hover); }
+.preset-card.is-on { border-color: var(--accent); background: var(--accent-soft); }
+.preset-card:disabled { opacity: 0.4; cursor: default; }
+.preset-thumb {
+  position: relative;
+  height: 40px;
+  border-radius: 5px;
+  background: #fff;
+  box-shadow: inset 0 0 0 1px var(--chrome-line);
+  overflow: hidden;
+}
+/* Absolute, so the card cannot squeeze the table before it is scaled: the
+   whole point is a full-width table shrunk, not a narrow one. */
+.preset-thumb table {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 132px;
+  margin: 0 !important;
+  font-size: 8px;
+  transform: translate(-50%, -50%) scale(0.42);
+}
+.preset-thumb th,
+.preset-thumb td {
+  height: 22px;
+  padding: 0;
+}
+.preset-name {
+  font-size: 9.5px;
+  line-height: 1.2;
+  text-align: center;
+  color: var(--chrome-ink-faint);
+  white-space: nowrap;
+}
+.preset-card.is-on .preset-name { color: var(--accent); font-weight: 600; }
+
+/* --- Corners ---------------------------------------------------------------
+   The handles sit exactly on the shape's corners, half in and half out, so
+   clicking one reads as touching that corner rather than pressing a button
+   that stands for it. */
+.corner-picker { margin-bottom: 13px; }
+.corner-stage {
+  position: relative;
+  width: 132px;
+  height: 62px;
+  margin: 6px auto 14px;
+}
+.corner-shape {
+  position: absolute;
+  inset: 0;
+  border: 1.5px solid var(--accent);
+  background: var(--accent-soft);
+}
+.corner-hit {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  color: var(--chrome-ink-faint);
+  cursor: pointer;
+}
+.corner-hit:hover { background: var(--chrome-hover); color: var(--chrome-ink); }
+.corner-hit.is-round { color: var(--accent); }
+.corner-hit:disabled { cursor: default; }
+.corner-hit--tl { top: -13px; left: -13px; }
+.corner-hit--tr { top: -13px; right: -13px; }
+.corner-hit--br { bottom: -13px; right: -13px; }
+.corner-hit--bl { bottom: -13px; left: -13px; }
+.corner-hit--tr svg { transform: rotate(90deg); }
+.corner-hit--br svg { transform: rotate(180deg); }
+.corner-hit--bl svg { transform: rotate(270deg); }
+
+.corner-links { display: flex; gap: 4px; margin-top: 9px; }
+.corner-links button {
+  flex: 1;
+  height: 24px;
+  border: 1px solid var(--chrome-line);
+  border-radius: 6px;
+  background: var(--chrome-sunken);
+  color: var(--chrome-ink-soft);
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.corner-links button:hover { background: var(--chrome-hover); }
+.corner-links button.is-on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+
+.corner-values {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px 6px;
+  margin-top: 10px;
+}
+.corner-value { display: grid; gap: 3px; font-size: 10px; color: var(--chrome-ink-faint); }
+.corner-value input {
+  height: 24px;
+  padding: 0 7px;
+  border: 1px solid var(--chrome-line);
+  border-radius: 6px;
+  background: var(--chrome-raised);
+  color: var(--chrome-ink);
+  font-family: inherit;
+  font-size: 11.5px;
+}
+
+/* The preview shows whichever block the panel is pointed at, shrunk to fit. */
+.panel-preview pre {
+  margin: 0 !important;
+  padding: 10px 12px !important;
+  font-size: 9.5px !important;
+  line-height: 1.5;
+}
+.panel-preview .hwp-callout {
+  margin: 0 !important;
+  padding: 10px 12px !important;
+  font-size: 10.5px;
+}
+.panel-preview .hwp-callout p { margin: 0; }
+.panel-note--tight { margin: 0 0 4px; }
+.panel-input { width: 100%; }
+
+/* --- Code block language picker --------------------------------------------- */
+
+.hwp-codeblock-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 30px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 0.85em 0 0.95em;
+}
+
+.hwp-codeblock-picker { position: relative; flex: none; }
+
+.hwp-codeblock-language {
+  height: 20px;
+  max-width: 11em;
+  padding: 0 5px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--code-chrome, #9ba5b6);
+  font-family: var(--ui-font);
+  font-size: 10.5px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.hwp-codeblock-menu {
+  position: absolute;
+  top: calc(100% + 3px);
+  left: 0;
+  z-index: 8;
+  width: 172px;
+  max-height: 264px;
+  overflow-y: auto;
+  padding: 4px;
+  border: 1px solid var(--chrome-line);
+  border-radius: 9px;
+  background: var(--chrome-raised);
+  box-shadow: 0 12px 30px rgba(10, 14, 22, 0.24);
+}
+
+.hwp-codeblock-option {
+  display: block;
+  width: 100%;
+  height: 25px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  color: var(--chrome-ink);
+  font-family: var(--ui-font);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.hwp-codeblock-option:hover { background: var(--accent); color: #fff; }
+.hwp-codeblock-option.is-current { color: var(--accent); font-weight: 560; }
+.hwp-codeblock-option.is-current:hover { color: #fff; }
+
+.hwp-codeblock-filename {
+  flex: 1;
+  min-width: 0;
+  height: 20px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  /* A filename that has been filled in is content, not chrome, so it reads a
+     step brighter than the language label beside it. */
+  color: color-mix(in srgb, var(--code-fg, #e3e7ee) 78%, transparent);
+  font-family: var(--ui-font);
+  font-size: 11.5px;
+  text-align: right;
+  padding: 0 4px;
+}
+.hwp-codeblock-filename::placeholder { color: var(--code-chrome, #9ba5b6); opacity: 0; }
+.hwp-codeblock:hover .hwp-codeblock-filename::placeholder,
+.hwp-codeblock:focus-within .hwp-codeblock-filename::placeholder { opacity: 0.5; }
+
+.hwp-codeblock:hover .hwp-codeblock-language,
+.hwp-codeblock:hover .hwp-codeblock-filename,
+.hwp-codeblock:focus-within .hwp-codeblock-language,
+.hwp-codeblock:focus-within .hwp-codeblock-filename {
+  border-color: color-mix(in srgb, currentColor 28%, transparent);
+}
+.hwp-codeblock-language:hover { color: var(--code-fg, #e3e7ee); }
+
+.hwp-codeblock-language:focus,
+.hwp-codeblock-filename:focus {
+  outline: none;
+  border-color: var(--accent);
+  /* Not `inherit`: that resolves to the document's ink, which on a dark code
+     block is black on black and hides what is being typed. */
+  color: var(--code-fg, #e3e7ee);
+  background: color-mix(in srgb, var(--code-fg, #e3e7ee) 12%, transparent);
+}
+
+.tb-popover-host { position: relative; display: inline-flex; }
+.tb-group-label {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--chrome-ink-faint);
+  padding: 0 4px 0 2px;
+}
+
+/* --- Table row and column grips ---------------------------------------------
+   Word signals these with the cursor alone; on the web an invisible hit target
+   is undiscoverable, so the strip fades in as well. The cursors are the same
+   hand-drawn arrows, inlined as data URIs. */
+
+.hwp-grip-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.hwp-grip {
+  /* Fixed light values, not chrome tokens: these sit on the page, and paper is
+     white whatever theme the application is wearing. Following --chrome-* here
+     painted them near-black in dark mode. */
+  --grip-face: #edeff3;
+  --grip-line: #d3d8e0;
+  position: absolute;
+  padding: 0;
+  border: 1px solid var(--grip-line);
+  border-radius: 3px;
+  background: var(--grip-face);
+  pointer-events: auto;
+  transition: background 90ms ease, border-color 90ms ease;
+}
+.hwp-grip:hover { background: #dde2ea; border-color: #98a1b0; }
+.hwp-grip--row {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Cpath d='M5 4 L15 10 L5 16 Z' fill='%23111318' stroke='%23ffffff' stroke-width='2' stroke-linejoin='round'/%3E%3C/svg%3E") 10 10,
+    pointer;
+}
+.hwp-grip--column {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Cpath d='M4 5 L16 5 L10 15 Z' fill='%23111318' stroke='%23ffffff' stroke-width='2' stroke-linejoin='round'/%3E%3C/svg%3E") 10 10,
+    pointer;
+}
+.hwp-grip--corner { cursor: pointer; border-radius: 4px; }
+
+/* --- Border target picker ---------------------------------------------------- */
+
+.border-targets {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+}
+.border-target {
+  display: grid;
+  place-items: center;
+  height: 30px;
+  border: 1px solid var(--chrome-line);
+  border-radius: 6px;
+  background: var(--chrome-sunken);
+  color: var(--chrome-ink-soft);
+  cursor: pointer;
+}
+.border-target:hover:not(:disabled) { background: var(--chrome-hover); color: var(--chrome-ink); }
+.border-target:disabled { opacity: 0.38; cursor: default; }
+
+.panel-count { font-weight: 450; color: var(--chrome-ink-faint); }
+
+/* --- Page mask -------------------------------------------------------------
+   Painted over the text so content cannot bleed into a margin or across the
+   gutter. See PageSheets.tsx for why this layer has to exist. */
+
+.hwp-mask-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.hwp-mask {
+  position: absolute;
+  left: calc(-1 * var(--margin));
+  top: calc(var(--sheet-index) * var(--stride) - var(--margin));
+  width: var(--page-w);
+  height: var(--page-h);
+}
+
+.hwp-mask-band {
+  position: absolute;
+  background: #fff;
+}
+.hwp-mask-band--top { left: 0; right: 0; top: 0; height: var(--margin); border-radius: 2px 2px 0 0; }
+.hwp-mask-band--bottom { left: 0; right: 0; bottom: 0; height: var(--margin); border-radius: 0 0 2px 2px; }
+.hwp-mask-band--left { top: var(--margin); bottom: var(--margin); left: 0; width: var(--margin); }
+.hwp-mask-band--right { top: var(--margin); bottom: var(--margin); right: 0; width: var(--margin); }
+
+/* The gap between this sheet and the next, in the canvas colour, widened so
+   the sheets' drop shadows repaint over anything crossing it. */
+.hwp-mask-gutter {
+  position: absolute;
+  left: -40px;
+  right: -40px;
+  top: 100%;
+  height: var(--sheet-gap);
+  background: var(--canvas);
+}
+
+/* --- Contextual sub-ribbon ---------------------------------------------------
+   Its own row, never wrapped into the main toolbar: a control that changes
+   position with the window width is one you have to hunt for. */
+
+.app-ribbon {
+  background: var(--chrome);
+  border-bottom: 1px solid var(--chrome-line);
+}
+.app-ribbon .app-toolbar { border-bottom: 0; }
+
+.app-subribbon {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-wrap: wrap;
+  padding: 4px 10px 5px;
+  background: var(--chrome-sunken);
+  border-top: 1px solid var(--chrome-line-soft);
+}
+
+.tb-picker { position: relative; display: inline-flex; }
+/* A picker reads as one box split by a rule: the value on the left, a muted
+   caret centred in its own compartment on the right. */
+.tb-select--button {
+  display: inline-flex;
+  align-items: stretch;
+  padding: 0;
+  text-align: left;
+  font-family: inherit;
+  overflow: hidden;
+}
+.tb-select-value {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.tb-select-caret {
+  flex: none;
+  width: 22px;
+  display: grid;
+  place-items: center;
+  border-left: 1px solid var(--chrome-line);
+  color: var(--chrome-ink-faint);
+}
+.tb-select--button:hover .tb-select-caret { color: var(--chrome-ink-soft); }
+/* Portalled to the body and positioned against the viewport, so the ribbon's
+   horizontal scrolling cannot clip it. Above every panel and menu, below only
+   the tooltip. */
+.tb-picker-menu {
+  z-index: 80;
+  overflow-y: auto;
+  /* Stop a wheel gesture that reaches the end of the list from chaining
+     through to the document behind it. */
+  overscroll-behavior: contain;
+  padding: 4px;
+  border: 1px solid var(--chrome-line);
+  border-radius: 9px;
+  background: var(--chrome-raised);
+  box-shadow: 0 12px 30px rgba(10, 14, 22, 0.24);
+}
+.tb-picker-option {
+  display: block;
+  width: 100%;
+  height: 26px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  color: var(--chrome-ink);
+  font-family: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.tb-picker-option:hover { background: var(--accent); color: #fff; }
+.tb-picker-option.is-current { color: var(--accent); font-weight: 560; }
+.tb-picker-option.is-current:hover { color: #fff; }
+
+.panel-body--idle { opacity: 0.45; pointer-events: none; }
+
+.tb-field-label {
+  font-size: 11px;
+  color: var(--chrome-ink-faint);
+  padding: 0 2px 0 4px;
+}
+
+/* What a grip is about to select, shown while the pointer is over it. */
+.ProseMirror .hwp-grip-preview {
+  box-shadow: inset 0 0 0 999px color-mix(in srgb, var(--accent) 11%, transparent);
+}
+
+.panel-scope {
+  padding: 8px 14px 9px;
+  font-size: 11.5px;
+  color: var(--chrome-ink-soft);
+  background: var(--accent-soft);
+  border-bottom: 1px solid var(--chrome-line);
+}
+.panel-scope strong { color: var(--accent); font-weight: 600; }
+.panel-scope--idle { background: #fdf5e8; color: #8a5a12; }
+.panel-scope--idle strong { color: #8a5a12; }
+.panel-scope-hint { display: block; margin-top: 2px; opacity: 0.85; }
+.panel-field--off { opacity: 0.4; }
+.panel-label--off { opacity: 0.6; }
+
+/* --- Tooltips ---------------------------------------------------------------
+   The browser's own title tooltip takes about a second and cannot be hurried;
+   a toolbar of icon buttons needs faster than that. */
+
+.tip {
+  position: fixed;
+  z-index: 90;
+  transform: translate(-50%, 0);
+  padding: 4px 8px 5px;
+  border-radius: 6px;
+  background: #22262e;
+  color: #f2f4f7;
+  font-size: 11.5px;
+  line-height: 1.3;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 4px 14px rgba(10, 14, 22, 0.28);
+}
+.tip--above { transform: translate(-50%, -100%); }
+
+/* --- Ribbon layout ----------------------------------------------------------
+   One row that scrolls sideways rather than reflowing into more and more rows:
+   a control that changes position with the window width is one you have to
+   hunt for. */
+
+.app-ribbon { min-width: 0; overflow: hidden; }
+
+.app-toolbar,
+.app-subribbon {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+}
+.app-subribbon { flex-wrap: nowrap; }
+.app-toolbar::-webkit-scrollbar,
+.app-subribbon::-webkit-scrollbar { height: 6px; }
+.app-toolbar::-webkit-scrollbar-thumb,
+.app-subribbon::-webkit-scrollbar-thumb {
+  background: var(--chrome-line);
+  border-radius: 3px;
+}
+
+/* Related controls travel together, with air around the group. */
+.tb-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+.app-subribbon > * { flex: none; }
+
+.panel-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--chrome-line);
+  background: var(--chrome);
+}
+.panel-foot .tb-btn {
+  height: 30px;
+  padding: 0 16px;
+  border-color: var(--chrome-line);
+  color: var(--chrome-ink);
+}
+
+.tb-input {
+  height: 28px;
+  width: 150px;
+  padding: 0 8px;
+  border: 1px solid var(--chrome-line);
+  border-radius: 6px;
+  background: var(--chrome-raised);
+  color: var(--chrome-ink);
+  font-family: inherit;
+  font-size: 12px;
+}
+.tb-input::placeholder { color: var(--chrome-ink-faint); }
+.tb-input:focus { outline: none; border-color: var(--accent); }

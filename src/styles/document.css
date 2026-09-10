@@ -1,0 +1,487 @@
+/*
+ * The document stylesheet.
+ *
+ * This file is the document's own CSS: it is loaded by the editor for the live
+ * view AND embedded verbatim into every saved .html file, so a saved document
+ * renders and prints identically with no application present.
+ *
+ * Two rules here are load-bearing for pagination and must not be relaxed:
+ *   1. Block elements carry bottom margins only. With no top margins there is
+ *      no margin collapsing between siblings, so the measurement pass in
+ *      pagination.ts can compute exact positions as height + margin-bottom.
+ *   2. Nothing in the flow is absolutely positioned or floated out of it.
+ */
+
+.hwp-doc {
+  --ink: #16181d;
+  --ink-soft: #4a5160;
+  --ink-faint: #767e8d;
+  --rule: #d9dde4;
+  --rule-strong: #c2c8d2;
+  --accent: #2f5fd0;
+  --tint: #f4f6fa;
+  --tint-strong: #e7ebf2;
+  --tint-warn: #fdf5e8;
+  --rule-warn: #e6cf9f;
+
+  --body-font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  --head-font: var(--body-font);
+  --body-size: 10.5pt;
+  --body-leading: 1.62;
+
+  color: var(--ink);
+  font-family: var(--body-font);
+  font-size: var(--body-size);
+  line-height: var(--body-leading);
+  font-variant-numeric: tabular-nums lining-nums;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.hwp-doc[data-theme="manuscript"] {
+  --body-font: "Charter", "Iowan Old Style", "Palatino Linotype", "Source Serif 4", Georgia, serif;
+  --head-font: "Charter", "Iowan Old Style", Georgia, serif;
+  --body-size: 11.5pt;
+  --body-leading: 1.58;
+  --accent: #8a4b2a;
+}
+
+/* --- Vertical rhythm: bottom margins only. See note 1 above. ------------- */
+
+.hwp-doc h1,
+.hwp-doc h2,
+.hwp-doc h3,
+.hwp-doc h4,
+.hwp-doc h5,
+.hwp-doc h6,
+.hwp-doc p,
+.hwp-doc ul,
+.hwp-doc ol,
+.hwp-doc pre,
+.hwp-doc blockquote,
+.hwp-doc table,
+.hwp-doc hr,
+.hwp-doc figure,
+.hwp-doc section.hwp-callout,
+.hwp-doc div.hwp-raw {
+  margin-top: 0;
+}
+
+.hwp-doc p { margin-bottom: 0.62em; }
+.hwp-doc ul,
+.hwp-doc ol { margin-bottom: 0.72em; padding-left: 1.35em; }
+.hwp-doc li { margin-bottom: 0.18em; }
+.hwp-doc li > p { margin-bottom: 0.18em; }
+.hwp-doc li::marker { color: var(--ink-faint); }
+
+/* Task lists. The checkbox is a real input so it survives the round trip to
+   disk as markup rather than as a picture of a checkbox. */
+.hwp-doc ul[data-type="taskList"] { list-style: none; padding-left: 0.15em; }
+.hwp-doc ul[data-type="taskList"] li { display: flex; align-items: flex-start; gap: 0.5em; }
+.hwp-doc ul[data-type="taskList"] li > label { flex: 0 0 auto; margin-top: 0.2em; line-height: 1; }
+.hwp-doc ul[data-type="taskList"] li > div { flex: 1 1 auto; min-width: 0; }
+.hwp-doc ul[data-type="taskList"] input[type="checkbox"] {
+  width: 0.92em;
+  height: 0.92em;
+  margin: 0;
+  accent-color: var(--accent);
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+/* A ticked box is already visible; striking the text through as well turns a
+   finished item into something that looks retracted, and reads badly when the
+   line holds code spans or links. */
+.hwp-doc ul[data-type="taskList"] li[data-checked="true"] > div { color: var(--ink-soft); }
+
+/* --- Headings ------------------------------------------------------------ */
+
+.hwp-doc h1,
+.hwp-doc h2,
+.hwp-doc h3,
+.hwp-doc h4,
+.hwp-doc h5,
+.hwp-doc h6 {
+  font-family: var(--head-font);
+  font-weight: 650;
+  line-height: 1.22;
+  letter-spacing: -0.012em;
+  color: var(--ink);
+}
+
+.hwp-doc h1 { font-size: 1.95em; margin-bottom: 0.42em; letter-spacing: -0.021em; }
+.hwp-doc h2 { font-size: 1.4em;  margin-bottom: 0.36em; }
+.hwp-doc h3 { font-size: 1.13em; margin-bottom: 0.3em; }
+.hwp-doc h4 { font-size: 1em; margin-bottom: 0.28em; font-weight: 660; }
+.hwp-doc h5 { font-size: 0.9em; margin-bottom: 0.26em; font-weight: 660; color: var(--ink-soft); }
+/* The sixth level is the eyebrow: too small to compete as a heading, so it
+   earns its place by looking different rather than merely smaller. */
+.hwp-doc h6 {
+  font-size: 0.83em;
+  margin-bottom: 0.28em;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--ink-faint);
+  font-weight: 620;
+}
+
+/* A heading following body copy needs air above it. Since we cannot use a top
+   margin, the preceding block supplies it via an adjacent-sibling rule. */
+.hwp-doc p + h1, .hwp-doc ul + h1, .hwp-doc ol + h1,
+.hwp-doc table + h1, .hwp-doc section + h1, .hwp-doc blockquote + h1 { margin-bottom: 0.42em; }
+.hwp-doc * + h1 { padding-top: 0.85em; }
+.hwp-doc * + h2 { padding-top: 0.75em; }
+.hwp-doc * + h3 { padding-top: 0.6em; }
+.hwp-doc * + h4 { padding-top: 0.55em; }
+.hwp-doc * + h5 { padding-top: 0.5em; }
+.hwp-doc * + h6 { padding-top: 0.65em; }
+.hwp-doc > :first-child,
+.hwp-doc .ProseMirror > :first-child { padding-top: 0; }
+
+/* --- Inline -------------------------------------------------------------- */
+
+.hwp-doc strong { font-weight: 640; }
+.hwp-doc a { color: var(--accent); text-decoration: none; border-bottom: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); }
+.hwp-doc mark { background: #fdf0a8; color: inherit; padding: 0.06em 0.16em; border-radius: 3px; }
+.hwp-doc code {
+  font-family: "SF Mono", ui-monospace, "JetBrains Mono", Menlo, monospace;
+  font-size: 0.88em;
+  background: var(--tint);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  padding: 0.08em 0.3em;
+}
+
+/* --- Code blocks ------------------------------------------------------------
+   Dark by default, because that is how code is read. Every colour is a custom
+   property, so a block can be flipped to light or repainted without touching
+   this file. The header band is reserved with padding rather than stacked
+   above the block: the editor floats live controls in it and a saved file
+   draws the same labels with pseudo-elements, so the block is identically
+   tall in the editor, on paper, and in a file opened on its own. */
+
+.hwp-doc .hwp-codeblock { position: relative; margin-bottom: 0.8em; }
+.hwp-doc .hwp-codeblock > pre { margin-bottom: 0; }
+
+.hwp-doc pre {
+  --code-bg: #191d24;
+  --code-fg: #e3e7ee;
+  --code-rule: #2b323d;
+  --code-chrome: #9ba5b6;
+  --tok-comment: #7b8595;
+  --tok-keyword: #c678dd;
+  --tok-string: #98c379;
+  --tok-number: #d19a66;
+  --tok-title: #61afef;
+  --tok-type: #56b6c2;
+  --tok-attr: #e5c07b;
+  --tok-delete: #e06c75;
+
+  position: relative;
+  font-family: "SF Mono", ui-monospace, Menlo, monospace;
+  font-size: 0.85em;
+  line-height: 1.55;
+  color: var(--code-fg);
+  background: var(--code-bg);
+  border: 1px solid var(--code-rule);
+  border-radius: var(--code-r-tl, 10px) var(--code-r-tr, 10px) var(--code-r-br, 10px) var(--code-r-bl, 10px);
+  /* 30px of header band, reserved in px so the editor's controls and the
+     saved file's labels cannot drift apart. */
+  padding: 30px 1.1em 0.95em;
+  margin-bottom: 0.8em;
+  overflow-x: auto;
+  tab-size: 4;
+  /* Without this a dark block prints as light-on-white, i.e. invisible. */
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+.hwp-doc pre[data-code-theme="light"] {
+  --code-bg: #f7f8fb;
+  --code-fg: #1d2128;
+  --code-rule: #dfe3ea;
+  --code-chrome: #7a8395;
+  --tok-comment: #7c8598;
+  --tok-keyword: #9226a8;
+  --tok-string: #1a7f4b;
+  --tok-number: #b0620a;
+  --tok-title: #1d55c4;
+  --tok-type: #0b6d78;
+  --tok-attr: #a3532a;
+  --tok-delete: #c0392b;
+}
+
+.hwp-doc pre code { background: none; border: 0; padding: 0; font-size: 1em; color: inherit; }
+
+/* Header labels. Suppressed in the editor, where live controls stand in. */
+.hwp-doc pre[data-language]::before {
+  content: attr(data-language);
+  position: absolute;
+  top: 9px;
+  left: 1.15em;
+  font-family: var(--body-font);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--code-chrome);
+}
+.hwp-doc pre[data-filename]::after {
+  content: attr(data-filename);
+  position: absolute;
+  top: 8px;
+  right: 1.15em;
+  font-family: var(--body-font);
+  font-size: 11.5px;
+  color: var(--code-chrome);
+}
+.hwp-doc .hwp-codeblock pre::before,
+.hwp-doc .hwp-codeblock pre::after { content: none; }
+
+/* Syntax palette. Lives here rather than in an imported highlight.js theme so
+   it travels with the document and colours survive the round trip to disk. */
+.hwp-doc .hljs-comment,
+.hwp-doc .hljs-quote { color: var(--tok-comment); font-style: italic; }
+.hwp-doc .hljs-keyword,
+.hwp-doc .hljs-selector-tag,
+.hwp-doc .hljs-literal,
+.hwp-doc .hljs-section,
+.hwp-doc .hljs-doctag { color: var(--tok-keyword); }
+.hwp-doc .hljs-string,
+.hwp-doc .hljs-regexp,
+.hwp-doc .hljs-addition { color: var(--tok-string); }
+.hwp-doc .hljs-number,
+.hwp-doc .hljs-symbol,
+.hwp-doc .hljs-bullet { color: var(--tok-number); }
+.hwp-doc .hljs-title,
+.hwp-doc .hljs-name,
+.hwp-doc .hljs-selector-id,
+.hwp-doc .hljs-selector-class { color: var(--tok-title); }
+.hwp-doc .hljs-type,
+.hwp-doc .hljs-built_in,
+.hwp-doc .hljs-class .hljs-title { color: var(--tok-type); }
+.hwp-doc .hljs-attr,
+.hwp-doc .hljs-attribute,
+.hwp-doc .hljs-variable,
+.hwp-doc .hljs-template-variable { color: var(--tok-attr); }
+.hwp-doc .hljs-meta { color: var(--tok-comment); }
+.hwp-doc .hljs-deletion { color: var(--tok-delete); }
+.hwp-doc .hljs-emphasis { font-style: italic; }
+.hwp-doc .hljs-strong { font-weight: 640; }
+
+.hwp-doc blockquote {
+  border-left: 2.5px solid var(--rule-strong);
+  padding: 0.1em 0 0.1em 1em;
+  margin-bottom: 0.8em;
+  color: var(--ink-soft);
+}
+.hwp-doc blockquote p:last-child { margin-bottom: 0; }
+
+.hwp-doc hr {
+  border: 0;
+  border-top: 1px solid var(--rule);
+  margin-bottom: 1.1em;
+  padding-top: 0.5em;
+}
+
+/* --- Callouts: bordered, rounded sections -------------------------------- */
+
+.hwp-doc .hwp-callout {
+  border: 1px solid var(--rule);
+  border-radius: var(--sec-r-tl, 12px) var(--sec-r-tr, 12px) var(--sec-r-br, 12px) var(--sec-r-bl, 12px);
+  padding: 0.95em 1.15em;
+  margin-bottom: 0.85em;
+  background: #fff;
+  break-inside: avoid;
+}
+.hwp-doc .hwp-callout > :last-child { margin-bottom: 0; }
+.hwp-doc .hwp-callout > :first-child { padding-top: 0; }
+
+.hwp-doc .hwp-callout[data-variant="note"] {
+  background: var(--tint);
+  border-color: var(--rule);
+}
+.hwp-doc .hwp-callout[data-variant="warning"] {
+  background: var(--tint-warn);
+  border-color: var(--rule-warn);
+}
+.hwp-doc .hwp-callout[data-variant="quiet"] {
+  border: 0;
+  background: var(--tint);
+  color: var(--ink-soft);
+}
+
+/* --- Alerts ---------------------------------------------------------------
+   GitHub's `> [!NOTE]` blocks. The heading is drawn by the stylesheet from
+   `data-label` rather than written into the document as text, which is what
+   lets a custom label ("LOOK AT THIS!") need no extra markup and keeps the
+   block reading identically in the editor, on paper, and in a saved file
+   opened on its own. The icons are inline data URIs for the same reason:
+   nothing here may depend on a file that did not travel with the document. */
+
+.hwp-doc .hwp-callout[data-alert] {
+  border-color: var(--alert-line);
+  border-left-width: 3px;
+  border-left-color: var(--alert-ink);
+  background: var(--alert-tint);
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+.hwp-doc .hwp-callout[data-alert]::before {
+  content: attr(data-label);
+  display: block;
+  min-height: 1.2em;
+  margin-bottom: 0.4em;
+  padding-left: 1.55em;
+  font-family: var(--head-font);
+  font-size: 0.92em;
+  font-weight: 680;
+  line-height: 1.3;
+  color: var(--alert-ink);
+  background-repeat: no-repeat;
+  background-position: left 0.02em;
+  background-size: 1.15em 1.15em;
+}
+
+.hwp-doc .hwp-callout[data-alert="note"] { --alert-ink: #2f5fd0; --alert-line: #cfdcf7; --alert-tint: #f3f7fe; }
+.hwp-doc .hwp-callout[data-alert="note"]::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%232f5fd0' stroke-width='1.5' stroke-linecap='round'%3E%3Ccircle cx='8' cy='8' r='6.3'/%3E%3Cpath d='M8 7.5v3.4'/%3E%3Ccircle cx='8' cy='5' r='.65' fill='%232f5fd0' stroke='none'/%3E%3C/svg%3E"); }
+
+.hwp-doc .hwp-callout[data-alert="tip"] { --alert-ink: #1e8449; --alert-line: #cfe8d8; --alert-tint: #f2faf5; }
+.hwp-doc .hwp-callout[data-alert="tip"]::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%231e8449' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5.5 9.5a4 4 0 1 1 5 0c-.6.5-.9 1.1-.9 1.8H6.4c0-.7-.3-1.3-.9-1.8Z'/%3E%3Cpath d='M6.7 13.4h2.6'/%3E%3C/svg%3E"); }
+
+.hwp-doc .hwp-callout[data-alert="important"] { --alert-ink: #7b3fbf; --alert-line: #ddd0f2; --alert-tint: #f8f4fe; }
+.hwp-doc .hwp-callout[data-alert="important"]::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%237b3fbf' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M13.4 3.4v5.8a1.4 1.4 0 0 1-1.4 1.4H8.7l-3.1 2.6v-2.6H4a1.4 1.4 0 0 1-1.4-1.4V3.4A1.4 1.4 0 0 1 4 2h8a1.4 1.4 0 0 1 1.4 1.4Z'/%3E%3Cpath d='M8 4.6v2.5'/%3E%3Ccircle cx='8' cy='8.9' r='.6' fill='%237b3fbf' stroke='none'/%3E%3C/svg%3E"); }
+
+.hwp-doc .hwp-callout[data-alert="warning"] { --alert-ink: #9a6700; --alert-line: #f0e0bd; --alert-tint: #fdf8ee; }
+.hwp-doc .hwp-callout[data-alert="warning"]::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%239a6700' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 2.3 14.3 13H1.7L8 2.3Z'/%3E%3Cpath d='M8 6.6v2.8'/%3E%3Ccircle cx='8' cy='11.3' r='.6' fill='%239a6700' stroke='none'/%3E%3C/svg%3E"); }
+
+.hwp-doc .hwp-callout[data-alert="caution"] { --alert-ink: #c0392b; --alert-line: #f5d2ce; --alert-tint: #fdf3f2; }
+.hwp-doc .hwp-callout[data-alert="caution"]::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23c0392b' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5.6 1.9h4.8l3.7 3.7v4.8l-3.7 3.7H5.6L1.9 10.4V5.6L5.6 1.9Z'/%3E%3Cpath d='M8 5v3.3'/%3E%3Ccircle cx='8' cy='10.7' r='.6' fill='%23c0392b' stroke='none'/%3E%3C/svg%3E"); }
+
+
+/* --- Tables ---------------------------------------------------------------
+   Appearance is driven by custom properties set on the <table> element by the
+   borders-and-shading panel. Every one has a theme fallback, so an unstyled
+   table follows the document and a styled one overrides only what it names.
+   Rounded corners are why `border-collapse` must be `separate`: collapsed
+   borders cannot be rounded, so the radius is drawn on the corner cells. */
+
+.hwp-doc .tableWrapper {
+  display: flow-root;
+  margin-bottom: 0.9em;
+}
+.hwp-doc .tableWrapper > table { margin-bottom: 0; }
+
+.hwp-doc table {
+  --tbl-line: var(--tbl-bw, 1px) var(--tbl-bs, solid) var(--tbl-bc, var(--rule));
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+  margin-bottom: 0.9em;
+  border: var(--tbl-line);
+  /* Four corners, each falling back to the table-wide radius and then to the
+     theme. Resolving them once here keeps the corner-cell rules below short
+     and means a cell never has to know which fallback applied. */
+  --tbl-c-tl: var(--tbl-r-tl, var(--tbl-radius, 10px));
+  --tbl-c-tr: var(--tbl-r-tr, var(--tbl-radius, 10px));
+  --tbl-c-br: var(--tbl-r-br, var(--tbl-radius, 10px));
+  --tbl-c-bl: var(--tbl-r-bl, var(--tbl-radius, 10px));
+  border-radius: var(--tbl-c-tl) var(--tbl-c-tr) var(--tbl-c-br) var(--tbl-c-bl);
+  font-size: 0.94em;
+  table-layout: fixed;
+}
+
+/* A row pushed onto a fresh page. The gap is padding on the row's own cells
+   rather than an inserted element, so `nth-child` banding is undisturbed. */
+.hwp-doc tr.hwp-row-break > * {
+  padding-top: calc(0.46em + var(--row-pad, 0px));
+}
+
+.hwp-doc th,
+.hwp-doc td {
+  border-right: var(--tbl-line);
+  border-bottom: var(--tbl-line);
+  padding: 0.46em 0.7em;
+  text-align: left;
+  vertical-align: top;
+  position: relative;
+}
+/* The header row. Every property has a theme fallback, so a table that has
+   never visited the Header section of the styles panel looks exactly as it
+   always did. `text-align` is declared after the shared th/td rule above, so
+   it wins on source order at equal specificity. */
+.hwp-doc th {
+  background: var(--tbl-header-fill, var(--tint-strong));
+  color: var(--tbl-header-ink, inherit);
+  font-weight: var(--tbl-header-weight, 620);
+  text-align: var(--tbl-header-align, left);
+  font-size: 0.94em;
+}
+.hwp-doc table[data-header-case="upper"] th {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.86em;
+}
+.hwp-doc table[data-header-case="small"] th {
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.04em;
+}
+
+/* A heavier rule under the header, the way a printed table separates its
+   column titles from the data. Scoped to the first row so a header *column*
+   is untouched, and specific enough to outrank both the `data-inner` rules
+   that can switch inner lines off and the last-row rule that removes them. */
+.hwp-doc table[data-header-rule="true"] tr:first-child:not(:last-child) > th {
+  border-bottom-width: max(2px, calc(var(--tbl-bw, 1px) * 2));
+  border-bottom-style: var(--tbl-bs, solid);
+  border-bottom-color: var(--tbl-bc, var(--rule));
+}
+/* Trim the last paragraph's bottom margin so a cell hugs its content.
+   The `:has` clause matters more than it looks: hovering a column edge makes
+   prosemirror-tables append an (absolutely positioned, zero-height) resize
+   handle to the cell, which costs the paragraph its `:last-child` match. The
+   margin came back, every row grew ~8px, and the whole document jumped. */
+.hwp-doc th > *:last-child,
+.hwp-doc td > *:last-child,
+.hwp-doc th > *:nth-last-child(2):has(+ .ProseMirror-widget),
+.hwp-doc td > *:nth-last-child(2):has(+ .ProseMirror-widget) { margin-bottom: 0; }
+.hwp-doc tr > *:last-child { border-right: 0; }
+.hwp-doc tr:last-child > * { border-bottom: 0; }
+
+/* Which inner rules are drawn. The outer border is unaffected. */
+.hwp-doc table[data-inner="none"] :is(th, td) { border-right-style: none; border-bottom-style: none; }
+.hwp-doc table[data-inner="horizontal"] :is(th, td) { border-right-style: none; }
+.hwp-doc table[data-inner="vertical"] :is(th, td) { border-bottom-style: none; }
+
+/* Banded rows get their own default, a step lighter than the header. Falling
+   back to the header fill made the two identical whenever a band colour had
+   not been chosen, so the header row vanished into the first band. A cell's
+   own shading is an inline style and outranks this; so do a cell's borders. */
+.hwp-doc table[data-stripe="true"] tr:nth-child(even) > td {
+  background: var(--tbl-band, var(--tint));
+}
+
+/* The radius sits inside the border, so the corner cells subtract its width.
+   Cells inherit `--tbl-c-*` from the table, so each corner cell rounds by the
+   same amount as the corner of the table it sits in. */
+.hwp-doc tr:first-child > *:first-child { border-top-left-radius: max(0px, calc(var(--tbl-c-tl, 10px) - var(--tbl-bw, 1px))); }
+.hwp-doc tr:first-child > *:last-child { border-top-right-radius: max(0px, calc(var(--tbl-c-tr, 10px) - var(--tbl-bw, 1px))); }
+.hwp-doc tr:last-child > *:last-child { border-bottom-right-radius: max(0px, calc(var(--tbl-c-br, 10px) - var(--tbl-bw, 1px))); }
+.hwp-doc tr:last-child > *:first-child { border-bottom-left-radius: max(0px, calc(var(--tbl-c-bl, 10px) - var(--tbl-bw, 1px))); }
+
+/* --- Figures, images, embedded SVG ---------------------------------------- */
+
+.hwp-doc img,
+.hwp-doc svg { max-width: 100%; height: auto; }
+
+.hwp-doc .hwp-raw {
+  margin-bottom: 0.85em;
+  break-inside: avoid;
+}
+.hwp-doc .hwp-raw > :last-child { margin-bottom: 0; }
+
+/* --- Explicit page break -------------------------------------------------- */
+
+.hwp-doc .hwp-hard-break {
+  height: 0;
+  margin: 0;
+  border-top: 1px dashed var(--rule-strong);
+}
