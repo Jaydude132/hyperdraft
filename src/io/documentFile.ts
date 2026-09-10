@@ -47,7 +47,7 @@ export function serializeDocument(doc: DocumentFile): string {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="generator" content="html_word_processor">
+<meta name="generator" content="hyperdraft">
 <title>${escapeHtml(doc.title)}</title>
 <style>
 ${documentCss.trim()}
@@ -80,11 +80,14 @@ export function parseDocument(html: string): DocumentFile {
 
 /**
  * The native extension. The bytes inside are still the self-contained HTML the
- * whole design rests on — renaming a `.hwpd` to `.html` opens it in any
+ * whole design rests on — renaming a `.hyd` to `.html` opens it in any
  * browser — but a document deserves an extension that says which application
  * made it.
  */
-export const DOCUMENT_EXTENSION = '.hwpd';
+export const DOCUMENT_EXTENSION = '.hyd';
+
+/** The extension this used to be. Still opens; never written. */
+export const LEGACY_EXTENSION = '.hwpd';
 
 function safeFileName(title: string, extension = DOCUMENT_EXTENSION): string {
   const base = title.trim().replace(/[^\w\s.-]/g, '').replace(/\s+/g, '-').slice(0, 60);
@@ -97,8 +100,8 @@ type FilePickerWindow = Window & {
 };
 
 const DOCUMENT_FILE_TYPE = {
-  description: 'Word processor document',
-  accept: { 'text/html': [DOCUMENT_EXTENSION] },
+  description: 'Hyperdraft document',
+  accept: { 'text/html': [DOCUMENT_EXTENSION, LEGACY_EXTENSION] },
 };
 
 const HTML_FILE_TYPE = {
@@ -182,7 +185,7 @@ export async function openDocument(): Promise<{ doc: DocumentFile; handle: Docum
   return new Promise((resolve) => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = `${DOCUMENT_EXTENSION},.html,.htm,text/html`;
+    input.accept = `${DOCUMENT_EXTENSION},${LEGACY_EXTENSION},.html,.htm,text/html`;
     input.onchange = async () => {
       const file = input.files?.[0];
       resolve(file ? { doc: parseDocument(await file.text()), handle: null } : null);

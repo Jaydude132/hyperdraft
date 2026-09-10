@@ -1,4 +1,4 @@
-# html_word_processor
+# Hyperdraft
 
 A word processor whose document *is* a web page. You type into it like Word —
 paginated sheets, a formatting toolbar, Cmd+P for paper — but the file it
@@ -13,10 +13,18 @@ npm run check      # layout regression check (needs the dev server running)
 
 ## Files
 
-Documents save as **`.hwpd`** — an extension that says which application made
+Documents save as **`.hyd`** — an extension that says which application made
 them. The bytes inside are still the self-contained HTML the whole design rests
 on, so renaming one to `.html` opens it in any browser; the save dialog offers
-plain `.html` as a second option.
+plain `.html` as a second option, and a file saved that way is the same bytes
+under a name every browser already knows. `.hwpd`, the extension this used to
+use, still opens; it is never written.
+
+A saved file carries the document stylesheet, the print rules and the syntax
+highlighting baked in, so it renders and prints correctly with no application
+present. What it cannot carry is pagination: the page breaks are measured by
+the editor, so a standalone file is one continuous column on screen and
+paginates only when the browser prints it.
 
 In a browser tab, **Export as PDF** does not go through the print dialog's
 "Save as PDF", because

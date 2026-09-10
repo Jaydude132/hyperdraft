@@ -25,7 +25,7 @@ const DEV_URL = process.env.HWP_DEV_URL;
 const SMOKE = process.env.HWP_SMOKE === '1';
 
 const DOCUMENT_FILTERS = [
-  { name: 'Word processor document', extensions: ['hwpd'] },
+  { name: 'Hyperdraft document', extensions: ['hyd', 'hwpd'] },
   { name: 'HTML document', extensions: ['html', 'htm'] },
 ];
 
@@ -39,7 +39,7 @@ function createWindow() {
     minHeight: 620,
     show: false,
     backgroundColor: '#eef0f4',
-    title: 'Word processor',
+    title: 'Hyperdraft',
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
