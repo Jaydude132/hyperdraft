@@ -134,8 +134,13 @@
 .hwp-doc * + h4 { padding-top: 0.55em; }
 .hwp-doc * + h5 { padding-top: 0.5em; }
 .hwp-doc * + h6 { padding-top: 0.65em; }
-.hwp-doc > :first-child,
-.hwp-doc .ProseMirror > :first-child { padding-top: 0; }
+/* The air above a heading is supplied by the block *before* it, so the first
+   block in the document must not carry it. Scoped to headings, which is what
+   it was written for: as a bare `:first-child` it also stripped a callout or a
+   table sitting in first position of its own padding — an alert at the top of
+   a document had its icon jammed against the border. */
+.hwp-doc > :first-child:is(h1, h2, h3, h4, h5, h6),
+.hwp-doc .ProseMirror > :first-child:is(h1, h2, h3, h4, h5, h6) { padding-top: 0; }
 
 /* --- Inline -------------------------------------------------------------- */
 
@@ -318,6 +323,7 @@
    nothing here may depend on a file that did not travel with the document. */
 
 .hwp-doc .hwp-callout[data-alert] {
+  padding-top: 1.05em;
   border-color: var(--alert-line);
   border-left-width: 3px;
   border-left-color: var(--alert-ink);

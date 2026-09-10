@@ -29,6 +29,7 @@
     "@tiptap/starter-kit": "^3.31.3",
     "hast-util-to-html": "^9.0.5",
     "lowlight": "^3.3.0",
+    "marked": "^18.0.12",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   },

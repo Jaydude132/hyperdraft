@@ -21,6 +21,7 @@ import { PageSheets } from './components/PageSheets';
 import { IconInfo, IconMark } from './components/icons';
 import { SvgCheatSheet } from './components/SvgCheatSheet';
 import { Callout } from './editor/extensions/Callout';
+import { MarkdownPaste } from './editor/extensions/MarkdownPaste';
 import { MarkdownRules } from './editor/extensions/MarkdownRules';
 import { MarkdownTable } from './editor/extensions/MarkdownTable';
 import { CodeBlock } from './editor/extensions/CodeBlock';
@@ -96,6 +97,7 @@ export default function App() {
       TaskItem.configure({ nested: true }),
       MarkdownRules,
       MarkdownTable,
+      MarkdownPaste,
       PageBreak,
       RawHtml,
       Pagination.configure({
