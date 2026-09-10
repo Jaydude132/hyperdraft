@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 /**
  * Tooltips for anything carrying `data-tip`.
@@ -10,11 +10,28 @@ import { useEffect, useState } from 'react';
 
 const DELAY = 110;
 const GAP = 7;
+/** Keep this much clear of the window edge. */
+const EDGE = 6;
 
 type Tip = { text: string; x: number; y: number; above: boolean };
 
 export function Tooltips() {
   const [tip, setTip] = useState<Tip | null>(null);
+  const node = useRef<HTMLDivElement>(null);
+
+  /**
+   * The tip is centred on its button, which pushes it off screen for the
+   * buttons at either end of the toolbar — the leftmost one lost its label
+   * entirely. Nudge it back inside once it has been laid out and its width is
+   * known; the arrow-less design means a shifted tip still reads correctly.
+   */
+  useLayoutEffect(() => {
+    const element = node.current;
+    if (!tip || !element) return;
+    const half = element.offsetWidth / 2;
+    const limit = window.innerWidth - EDGE - half;
+    element.style.left = `${Math.min(Math.max(tip.x, EDGE + half), Math.max(limit, EDGE + half))}px`;
+  }, [tip]);
 
   useEffect(() => {
     let timer = 0;
@@ -74,6 +91,7 @@ export function Tooltips() {
 
   return (
     <div
+      ref={node}
       className={`tip${tip.above ? ' tip--above' : ''}`}
       role="tooltip"
       style={{ left: tip.x, top: tip.y }}
