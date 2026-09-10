@@ -340,3 +340,17 @@ export const IconInfo = ({ size = 16 }: IconProps) => (
     <circle cx="8" cy="4.9" r="0.75" fill="currentColor" stroke="none" />
   </svg>
 );
+
+export const IconNewDoc = ({ size = 16 }: IconProps) => (
+  <svg {...base(size)}>
+    <path d="M8.8 1.9H4.4a1.6 1.6 0 0 0-1.6 1.6v9a1.6 1.6 0 0 0 1.6 1.6h5.4a1.6 1.6 0 0 0 1.6-1.6V4.6Z" />
+    <path d="M8.8 1.9v2.7h2.6" />
+    <path d="M7.1 7.6v3.6M5.3 9.4h3.6" />
+  </svg>
+);
+
+export const IconClose = ({ size = 16 }: IconProps) => (
+  <svg {...base(size)}>
+    <path d="M3.6 3.6l8.8 8.8M12.4 3.6l-8.8 8.8" />
+  </svg>
+);

@@ -59,7 +59,11 @@ body {
      a wide ribbon would stretch the whole application and scroll the page
      sideways instead of scrolling within itself. */
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto auto 1fr auto;
+  /* Title bar, open-document tabs, ribbon, canvas, status bar. The tab row is
+     only rendered when there is more than one document, and a track with no
+     item in it takes no height — but the canvas must stay the one that grows,
+     so the rows are named by what they hold rather than counted. */
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
   height: 100%;
   overflow: hidden;
 }
@@ -104,6 +108,90 @@ body {
 .app-title:focus { outline: none; border-color: var(--accent); background: var(--chrome-raised); }
 
 .app-titlebar-spacer { flex: 1; }
+
+/* --- Open documents ---------------------------------------------------------
+   Only rendered when there is more than one, so a single-document window
+   spends no height on a row that would always say the same thing. */
+
+.app-tabs {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 30px;
+  padding: 0 8px;
+  background: var(--chrome);
+  border-bottom: 1px solid var(--chrome-line);
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+.app-tabs::-webkit-scrollbar { display: none; }
+
+.app-tab {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 220px;
+  height: 26px;
+  padding: 0 4px 0 10px;
+  border: 1px solid transparent;
+  border-bottom: 0;
+  border-radius: 7px 7px 0 0;
+  color: var(--chrome-ink-faint);
+  font-size: 11.5px;
+  white-space: nowrap;
+  cursor: default;
+  user-select: none;
+}
+.app-tab:hover { background: var(--chrome-hover); color: var(--chrome-ink-soft); }
+.app-tab.is-active {
+  background: var(--chrome-raised);
+  border-color: var(--chrome-line);
+  color: var(--chrome-ink);
+  font-weight: 550;
+}
+/* Unsaved says it twice: italic is easy to miss in a row of names, and the
+   asterisk survives a glance. */
+.app-tab.is-dirty .app-tab-name { font-style: italic; }
+
+.app-tab-name { overflow: hidden; text-overflow: ellipsis; }
+
+.app-tab-close {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 17px;
+  height: 17px;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  color: inherit;
+  opacity: 0;
+  cursor: pointer;
+}
+.app-tab:hover .app-tab-close,
+.app-tab.is-active .app-tab-close { opacity: 0.75; }
+.app-tab-close:hover { background: var(--chrome-line); opacity: 1; }
+
+.app-tab-new {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 26px;
+  height: 26px;
+  margin-left: 2px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--chrome-ink-faint);
+  cursor: pointer;
+}
+.app-tab-new:hover { background: var(--chrome-hover); color: var(--chrome-ink); }
 
 /* --- Toolbar -------------------------------------------------------------- */
 

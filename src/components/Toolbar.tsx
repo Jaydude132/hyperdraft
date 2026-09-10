@@ -14,6 +14,7 @@ import {
   IconLink,
   IconOpen,
   IconImage,
+  IconNewDoc,
   IconOrderedList,
   IconTaskList,
   IconPageBreak,
@@ -40,6 +41,7 @@ const STARTER_SVG = `<svg viewBox="0 0 420 120" role="img" aria-label="Diagram" 
 
 type ToolbarProps = {
   editor: Editor;
+  onNew: () => void;
   onOpen: () => void;
   onSave: () => void;
   onExport: () => void;
@@ -100,7 +102,7 @@ const BLOCK_STYLES: { value: string; label: string }[] = [
   { value: 'codeBlock', label: 'Code' },
 ];
 
-export function Toolbar({ editor, onOpen, onSave, onExport, onEditMarkup, theme }: ToolbarProps) {
+export function Toolbar({ editor, onNew, onOpen, onSave, onExport, onEditMarkup, theme }: ToolbarProps) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const pickerHost = useRef<HTMLSpanElement>(null);
 
@@ -210,6 +212,9 @@ export function Toolbar({ editor, onOpen, onSave, onExport, onEditMarkup, theme 
   return (
     <div className="app-toolbar" role="toolbar" aria-label="Formatting">
       <div className="tb-row">
+      <TbButton title="New document — ⌘N" onClick={onNew}>
+        <IconNewDoc />
+      </TbButton>
       <TbButton title="Open document" onClick={onOpen}>
         <IconOpen />
       </TbButton>

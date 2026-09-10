@@ -20,6 +20,16 @@ plain `.html` as a second option, and a file saved that way is the same bytes
 under a name every browser already knows. `.hwpd`, the extension this used to
 use, still opens; it is never written.
 
+Several documents can be open at once. The tab strip appears only when there
+is more than one — a row of chrome that always says the same thing is a row
+that could have been page — and unsaved documents are set in italic with an
+asterisk, two signals rather than one because italic alone is easy to miss in
+a row of names. New documents come from the toolbar or ⌘N and inherit the
+theme and paper of the one being worked on, which is nearly always right when
+writing a set of them. One editor serves every tab: switching is instant and
+the pagination pass only ever measures one document, at the cost of a per-tab
+undo history.
+
 A saved file carries the document stylesheet, the print rules and the syntax
 highlighting baked in, so it renders and prints correctly with no application
 present. What it cannot carry is pagination: the page breaks are measured by
@@ -322,6 +332,7 @@ electron/
   components/
     Toolbar.tsx            the main formatting ribbon
     ContextRibbon.tsx      table / code / section ribbon, on its own row
+    TabStrip.tsx           open documents, unsaved ones marked
     TableGrips.tsx         Word-style row and column selection handles
     PageSheets.tsx         the sheets, and the mask painted over the gutters
     ContextMenu.tsx        right-click menu
@@ -369,6 +380,19 @@ pipe is typed, while one left open waits for Enter so that someone still adding
 columns is not interrupted halfway. The header text carries over, `:---`,
 `---:` and `:---:` set the column alignment, and the caret lands in the first
 body cell. See `editor/extensions/MarkdownTable.ts`.
+
+**Pasting markdown renders it.** The clipboard's plain text wins whenever it
+looks like markdown — headings, fences, pipes, bullets — which is the right
+call on intent: text in that shape was written by someone who wants it
+rendered, and HTML copied from a web page almost never looks like it. That
+also sidesteps the editors that ship an HTML flavour of their own (VS Code's
+is a pile of `<div>`s and inline colours) which used to arrive as a code
+block — the source pasted in as a picture of itself. Anything that does not
+look like markdown falls through to ProseMirror's own paste handling, and
+inside a code block markdown stays content rather than format.
+`marked` does the parsing; alerts and task lists are adapted afterwards,
+because a parser cannot know about this schema. See
+`editor/extensions/MarkdownPaste.ts`.
 
 **Alerts** are GitHub's, and they are the reason this editor can write
 documentation that looks like documentation:
@@ -420,9 +444,9 @@ there is always something working to edit. See `components/SvgCheatSheet.tsx`.
 - **No running headers, footers, or page numbers on paper.** Those need
   Paged.js on the export path; the browser's own `@page` margin boxes are not
   broadly supported.
-- **Markdown is recognised as it is typed, not as it is pasted.** Pasting a
-  markdown document drops it in as plain text; the input rules only fire on
-  typing. A paste path that parses a whole document is the obvious next step.
+- **Switching documents resets the undo history.** One editor serves every
+  tab, so `setContent` clears its history on each switch. Per-tab undo needs
+  either an editor per document or a saved history stack.
 - **The desktop app is not packaged.** `npm run desktop` runs it; turning that
   into a signed, double-clickable `.app` needs electron-builder and an Apple
   developer certificate, neither of which is set up.

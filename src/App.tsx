@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, MouseEvent as ReactMouseEvent } from 'react';
 import { EditorContent, useEditor } from '@tiptap/react';
+import type { Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { TableKit } from '@tiptap/extension-table';
 import Highlight from '@tiptap/extension-highlight';
@@ -17,6 +18,7 @@ import type { MenuAnchor, MenuEntry } from './components/ContextMenu';
 import { buildContextMenu } from './components/documentMenu';
 import { StylePanel } from './components/StylePanel';
 import { TableGrips } from './components/TableGrips';
+import { TabStrip } from './components/TabStrip';
 import { PageSheets } from './components/PageSheets';
 import { IconInfo, IconMark } from './components/icons';
 import { SvgCheatSheet } from './components/SvgCheatSheet';
@@ -47,15 +49,67 @@ const THEMES = [
   { value: 'manuscript', label: 'Manuscript' },
 ];
 
+const EMPTY_DOCUMENT = '<p></p>';
+
+/**
+ * One open document.
+ *
+ * The active one lives in the editor and its `html` is stale until it is
+ * switched away from; the rest keep their content here. One editor rather than
+ * one per tab is a deliberate trade: switching is instant and the pagination
+ * pass only ever measures one document, at the cost of a per-tab undo history,
+ * which `setContent` resets.
+ */
+type OpenDocument = {
+  id: string;
+  title: string;
+  theme: string;
+  pageSize: PageSizeName;
+  handle: DocumentHandle | null;
+  html: string;
+  dirty: boolean;
+};
+
+let documentSerial = 0;
+const nextDocumentId = () => `doc-${(documentSerial += 1)}`;
+
+function countWords(instance: Editor): number {
+  return instance.state.doc
+    .textBetween(0, instance.state.doc.content.size, ' ')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean).length;
+}
+
 export default function App() {
-  const [title, setTitle] = useState('Quarterly Field Report');
-  const [theme, setTheme] = useState('report');
-  const [pageSize, setPageSize] = useState<PageSizeName>('Letter');
+  const [tabs, setTabs] = useState<OpenDocument[]>(() => [
+    {
+      id: nextDocumentId(),
+      title: 'Quarterly Field Report',
+      theme: 'report',
+      pageSize: 'Letter',
+      handle: null,
+      html: STARTER_DOCUMENT,
+      dirty: false,
+    },
+  ]);
+  const [activeId, setActiveId] = useState(() => tabs[0].id);
   const [pageCount, setPageCount] = useState(1);
   const [words, setWords] = useState(0);
-  const [dirty, setDirty] = useState(false);
 
-  const fileHandle = useRef<DocumentHandle | null>(null);
+  /* The editor's own callbacks outlive any given render, so the document they
+     should be writing to is read from a ref rather than captured. */
+  const activeRef = useRef(activeId);
+  useEffect(() => {
+    activeRef.current = activeId;
+  }, [activeId]);
+
+  const active = tabs.find((tab) => tab.id === activeId) ?? tabs[0];
+  const { title, theme, pageSize, dirty } = active;
+
+  const patchActive = useCallback((patch: Partial<OpenDocument>) => {
+    setTabs((list) => list.map((tab) => (tab.id === activeRef.current ? { ...tab, ...patch } : tab)));
+  }, []);
   const markupDialog = useRef<HTMLDialogElement>(null);
   const [markupDraft, setMarkupDraft] = useState('');
   const [cheatOpen, setCheatOpen] = useState(false);
@@ -110,11 +164,15 @@ export default function App() {
       attributes: { class: 'hwp-doc-flow', spellcheck: 'true' },
     },
     onUpdate: ({ editor: instance }) => {
-      setDirty(true);
-      setWords(instance.state.doc.textBetween(0, instance.state.doc.content.size, ' ').trim().split(/\s+/).filter(Boolean).length);
+      setTabs((list) =>
+        list.map((tab) =>
+          tab.id === activeRef.current && !tab.dirty ? { ...tab, dirty: true } : tab,
+        ),
+      );
+      setWords(countWords(instance));
     },
     onCreate: ({ editor: instance }) => {
-      setWords(instance.state.doc.textBetween(0, instance.state.doc.content.size, ' ').trim().split(/\s+/).filter(Boolean).length);
+      setWords(countWords(instance));
     },
   });
 
@@ -167,30 +225,127 @@ export default function App() {
     try {
       const handle = await saveDocument(
         { title, theme, pageSize, bodyHtml: editor.getHTML() },
-        fileHandle.current,
+        active.handle,
       );
-      fileHandle.current = handle;
-      setDirty(false);
+      patchActive({ handle, dirty: false });
     } catch (error) {
       if ((error as DOMException)?.name !== 'AbortError') console.error(error);
     }
-  }, [editor, title, theme]);
+  }, [editor, title, theme, pageSize, active.handle, patchActive]);
 
   const handleOpen = useCallback(async () => {
     if (!editor) return;
     try {
       const result = await openDocument();
       if (!result) return;
-      fileHandle.current = result.handle;
-      setTitle(result.doc.title);
-      setTheme(result.doc.theme);
-      setPageSize(result.doc.pageSize);
-      editor.commands.setContent(result.doc.bodyHtml, { emitUpdate: true });
-      setDirty(false);
+      openInTab({
+        title: result.doc.title,
+        theme: result.doc.theme,
+        pageSize: result.doc.pageSize,
+        handle: result.handle,
+        html: result.doc.bodyHtml,
+      });
     } catch (error) {
       if ((error as DOMException)?.name !== 'AbortError') console.error(error);
     }
   }, [editor]);
+
+  /** Park the editor's content back on its own tab before leaving it. */
+  const stashActive = useCallback(() => {
+    if (!editor) return;
+    const html = editor.getHTML();
+    setTabs((list) => list.map((tab) => (tab.id === activeRef.current ? { ...tab, html } : tab)));
+  }, [editor]);
+
+  /** Load a document into the editor without marking it as edited. */
+  const load = useCallback(
+    (html: string) => {
+      if (!editor) return;
+      editor.commands.setContent(html, { emitUpdate: false });
+      setWords(countWords(editor));
+    },
+    [editor],
+  );
+
+  const openInTab = useCallback(
+    (document: Omit<OpenDocument, 'id' | 'dirty'>) => {
+      if (!editor) return;
+      stashActive();
+      const opened: OpenDocument = { ...document, id: nextDocumentId(), dirty: false };
+      setTabs((list) => [...list, opened]);
+      setActiveId(opened.id);
+      activeRef.current = opened.id;
+      load(opened.html);
+    },
+    [editor, stashActive, load],
+  );
+
+  const newDocument = useCallback(() => {
+    // A new document inherits the look of the one being worked on, which is
+    // nearly always right when writing a set of them.
+    openInTab({
+      title: 'Untitled document',
+      theme,
+      pageSize,
+      handle: null,
+      html: EMPTY_DOCUMENT,
+    });
+  }, [openInTab, theme, pageSize]);
+
+  const selectDocument = useCallback(
+    (id: string) => {
+      if (!editor || id === activeRef.current) return;
+      const next = tabs.find((tab) => tab.id === id);
+      if (!next) return;
+      stashActive();
+      setActiveId(id);
+      activeRef.current = id;
+      load(next.html);
+    },
+    [editor, tabs, stashActive, load],
+  );
+
+  const closeDocument = useCallback(
+    (id: string) => {
+      const doomed = tabs.find((tab) => tab.id === id);
+      if (!editor || !doomed) return;
+      if (doomed.dirty && !window.confirm(`“${doomed.title}” has unsaved changes. Close it anyway?`)) {
+        return;
+      }
+
+      const remaining = tabs.filter((tab) => tab.id !== id);
+      const closingActive = id === activeRef.current;
+
+      // Closing the last one leaves a blank document rather than no document:
+      // an editor with nothing to edit is a broken-looking window.
+      if (remaining.length === 0) {
+        const fresh: OpenDocument = {
+          id: nextDocumentId(),
+          title: 'Untitled document',
+          theme,
+          pageSize,
+          handle: null,
+          html: EMPTY_DOCUMENT,
+          dirty: false,
+        };
+        setTabs([fresh]);
+        setActiveId(fresh.id);
+        activeRef.current = fresh.id;
+        load(EMPTY_DOCUMENT);
+        return;
+      }
+
+      if (closingActive) {
+        const index = tabs.findIndex((tab) => tab.id === id);
+        const next = remaining[Math.min(index, remaining.length - 1)];
+        setActiveId(next.id);
+        activeRef.current = next.id;
+        load(next.html);
+      }
+      setTabs(remaining);
+    },
+    [editor, tabs, theme, pageSize, load],
+  );
 
   const handlePrint = useCallback(() => {
     const shell = desktop();
@@ -299,10 +454,18 @@ export default function App() {
         event.preventDefault();
         handlePrint();
       }
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'n') {
+        event.preventDefault();
+        newDocument();
+      }
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'w') {
+        event.preventDefault();
+        closeDocument(activeRef.current);
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [handleSave, handleOpen, handlePrint]);
+  }, [handleSave, handleOpen, handlePrint, newDocument, closeDocument]);
 
   return (
     <div className="app">
@@ -315,20 +478,14 @@ export default function App() {
           value={title}
           spellCheck={false}
           aria-label="Document title"
-          onChange={(event) => {
-            setTitle(event.target.value);
-            setDirty(true);
-          }}
+          onChange={(event) => patchActive({ title: event.target.value, dirty: true })}
         />
         <div className="app-titlebar-spacer" />
         <select
           className="tb-select"
           value={theme}
           aria-label="Document theme"
-          onChange={(event) => {
-            setTheme(event.target.value);
-            setDirty(true);
-          }}
+          onChange={(event) => patchActive({ theme: event.target.value, dirty: true })}
         >
           {THEMES.map((option) => (
             <option key={option.value} value={option.value}>
@@ -340,17 +497,28 @@ export default function App() {
           className="tb-select"
           value={pageSize}
           aria-label="Page size"
-          onChange={(event) => setPageSize(event.target.value as PageSizeName)}
+          onChange={(event) => patchActive({ pageSize: event.target.value as PageSizeName })}
         >
           <option value="Letter">Letter</option>
           <option value="A4">A4</option>
         </select>
       </div>
 
+      {tabs.length > 1 ? (
+        <TabStrip
+          tabs={tabs}
+          activeId={activeId}
+          onSelect={selectDocument}
+          onClose={closeDocument}
+          onNew={newDocument}
+        />
+      ) : null}
+
       {editor ? (
         <div className="app-ribbon">
           <Toolbar
             editor={editor}
+            onNew={newDocument}
             onOpen={handleOpen}
             onSave={handleSave}
             onExport={() => void handleExportPdf()}
