@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import type { MouseEvent as ReactMouseEvent } from 'react';
 import type { ReactNode } from 'react';
 import type { Editor } from '@tiptap/react';
 import { useEditorState } from '@tiptap/react';
@@ -44,7 +45,7 @@ type ToolbarProps = {
   onNew: () => void;
   onOpen: () => void;
   onSave: () => void;
-  onExport: () => void;
+  onExport: (anchor: { x: number; y: number }) => void;
   onEditMarkup: () => void;
   /** Only to re-read the theme's own font when the document theme changes. */
   theme: string;
@@ -52,7 +53,7 @@ type ToolbarProps = {
 
 type ButtonProps = {
   title: string;
-  onClick: () => void;
+  onClick: (event: ReactMouseEvent<HTMLButtonElement>) => void;
   active?: boolean;
   disabled?: boolean;
   children: ReactNode;
@@ -221,7 +222,13 @@ export function Toolbar({ editor, onNew, onOpen, onSave, onExport, onEditMarkup,
       <TbButton title="Save document" onClick={onSave}>
         <IconSave />
       </TbButton>
-      <TbButton title="Export PDF — ⌘P to print" onClick={onExport}>
+      <TbButton
+        title="Export — PDF or Markdown"
+        onClick={(event) => {
+          const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+          onExport({ x: rect.left, y: rect.bottom + 4 });
+        }}
+      >
         <IconExport />
       </TbButton>
 

@@ -25,9 +25,11 @@ const DEV_URL = process.env.HWP_DEV_URL;
 const SMOKE = process.env.HWP_SMOKE === '1';
 
 const DOCUMENT_FILTERS = [
-  { name: 'Hyperdraft document', extensions: ['hyd', 'hwpd'] },
   { name: 'HTML document', extensions: ['html', 'htm'] },
+  { name: 'Hyperdraft document (older)', extensions: ['hyd', 'hwpd'] },
 ];
+
+const MARKDOWN_FILTERS = [{ name: 'Markdown', extensions: ['md', 'markdown'] }];
 
 let mainWindow = null;
 
@@ -103,13 +105,13 @@ ipcMain.handle('hwp:open-document', async () => {
   return { path: file, contents: await fs.readFile(file, 'utf8') };
 });
 
-ipcMain.handle('hwp:save-document', async (_event, { contents, suggestedName, path: target }) => {
+ipcMain.handle('hwp:save-document', async (_event, { contents, suggestedName, path: target, kind }) => {
   let file = target;
   if (!file) {
     const result = await dialog.showSaveDialog(mainWindow, {
-      title: 'Save document',
+      title: kind === 'markdown' ? 'Export markdown' : 'Save document',
       defaultPath: suggestedName,
-      filters: DOCUMENT_FILTERS,
+      filters: kind === 'markdown' ? MARKDOWN_FILTERS : DOCUMENT_FILTERS,
     });
     if (result.canceled || !result.filePath) return null;
     file = result.filePath;

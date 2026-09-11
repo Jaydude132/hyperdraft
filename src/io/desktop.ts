@@ -17,6 +17,8 @@ type DesktopBridge = {
     contents: string;
     suggestedName: string;
     path?: string | null;
+    /** Which dialog filters to offer. Documents unless said otherwise. */
+    kind?: 'document' | 'markdown';
   }) => Promise<DesktopPath>;
   exportPdf: (options: { suggestedName: string }) => Promise<DesktopPath>;
   print: () => Promise<boolean>;

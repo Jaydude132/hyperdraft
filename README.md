@@ -13,12 +13,15 @@ npm run check      # layout regression check (needs the dev server running)
 
 ## Files
 
-Documents save as **`.hyd`** — an extension that says which application made
-them. The bytes inside are still the self-contained HTML the whole design rests
-on, so renaming one to `.html` opens it in any browser; the save dialog offers
-plain `.html` as a second option, and a file saved that way is the same bytes
-under a name every browser already knows. `.hwpd`, the extension this used to
-use, still opens; it is never written.
+Documents save as **`.html`**. The bytes were always self-contained HTML, and
+a private extension only made that harder to act on — a file you cannot
+double-click into a browser is worth less than one you can, and the stylesheet
+travels inside either way. `.hyd` and `.hwpd`, both of which this wrote at some
+point, still open; neither is written any more.
+
+There are two export paths beside it, on one toolbar button: **PDF**, which is
+the document's pages exactly as measured, and **Markdown**, which is the
+document's content with every trace of the styling model removed.
 
 Several documents can be open at once. The tab strip appears only when there
 is more than one — a row of chrome that always says the same thing is a row
@@ -256,6 +259,24 @@ the page mask and every screen-only spacer are suppressed, and the code
 block's live controls are replaced by the same labels drawn from `data-`
 attributes.
 
+## Markdown out
+
+Exporting markdown is a deliberate downgrade, and saying so is the point.
+Corner radii, banded rows, header fills, themes, page geometry — none of it has
+markdown to be written in, so it is dropped rather than smuggled out as HTML.
+A bordered section goes the same way: it is styling, so what survives is its
+content. An alert is the exception, because `> [!NOTE]` is real markdown.
+
+What comes back is the document's content in the same dialect the editor
+reads, so an exported file pasted straight back in rebuilds the structure it
+came from — verified by walking the starter document out and back: headings,
+tables, code with its language, task lists with their ticks, alerts with their
+custom labels, and inline SVG all return intact.
+
+It walks the ProseMirror document rather than the rendered HTML, because the
+node types are the thing being converted: an alert is an alert, not a
+`<section>` that has to be recognised all over again. See `editor/markdown.ts`.
+
 ## Desktop
 
 ```
@@ -309,6 +330,7 @@ src/
   editor/
     geometry.ts            page sizes, margins, flow stride — one source of truth
     pagination.ts          the measurement pass and its widget decorations
+    markdown.ts            the document, as markdown
     starterDocument.ts     the document the app opens with
     highlighting.ts        shared lowlight instance + the save-time highlighter
     extensions/

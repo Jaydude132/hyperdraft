@@ -29,13 +29,26 @@ export const RawHtml = Node.create({
     return {
       html: {
         default: '',
-        parseHTML: (element) => element.innerHTML,
+        /* A matched <svg> *is* the markup; anything else is a wrapper around
+           it, so the content is what lives inside. */
+        parseHTML: (element) =>
+          element.tagName.toLowerCase() === 'svg' ? element.outerHTML : element.innerHTML,
       },
     };
   },
 
   parseHTML() {
-    return [{ tag: 'div.hwp-raw' }];
+    return [
+      { tag: 'div.hwp-raw' },
+      /* A bare <svg> — pasted from a drawing tool, or arriving back from a
+         markdown export, where inline HTML is how a figure survives at all.
+         Without this the schema has no node for it and it is dropped. */
+      {
+        tag: 'svg',
+        getAttrs: (element: HTMLElement) => ({ html: element.outerHTML }),
+        priority: 60,
+      },
+    ];
   },
 
   renderHTML({ HTMLAttributes, node }) {

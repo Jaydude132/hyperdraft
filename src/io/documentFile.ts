@@ -79,15 +79,16 @@ export function parseDocument(html: string): DocumentFile {
 }
 
 /**
- * The native extension. The bytes inside are still the self-contained HTML the
- * whole design rests on — renaming a `.hyd` to `.html` opens it in any
- * browser — but a document deserves an extension that says which application
- * made it.
+ * Documents are HTML, and are saved as such.
+ *
+ * The bytes were always self-contained HTML; a private extension only made
+ * that harder to act on — a file you cannot double-click into a browser is
+ * worth less than one you can, and the stylesheet travels inside either way.
  */
-export const DOCUMENT_EXTENSION = '.hyd';
+export const DOCUMENT_EXTENSION = '.html';
 
-/** The extension this used to be. Still opens; never written. */
-export const LEGACY_EXTENSION = '.hwpd';
+/** Extensions this has written before. They still open; they are not written. */
+export const LEGACY_EXTENSIONS = ['.hyd', '.hwpd'];
 
 function safeFileName(title: string, extension = DOCUMENT_EXTENSION): string {
   const base = title.trim().replace(/[^\w\s.-]/g, '').replace(/\s+/g, '-').slice(0, 60);
@@ -100,13 +101,19 @@ type FilePickerWindow = Window & {
 };
 
 const DOCUMENT_FILE_TYPE = {
-  description: 'Hyperdraft document',
-  accept: { 'text/html': [DOCUMENT_EXTENSION, LEGACY_EXTENSION] },
-};
-
-const HTML_FILE_TYPE = {
   description: 'HTML document',
   accept: { 'text/html': ['.html', '.htm'] },
+};
+
+/** Only offered when opening: these are read, never written. */
+const LEGACY_FILE_TYPE = {
+  description: 'Hyperdraft document (older)',
+  accept: { 'text/html': LEGACY_EXTENSIONS },
+};
+
+const MARKDOWN_FILE_TYPE = {
+  description: 'Markdown',
+  accept: { 'text/markdown': ['.md', '.markdown'] },
 };
 
 /**
@@ -119,8 +126,8 @@ export type DocumentHandle = FileSystemFileHandle | { desktopPath: string };
 const pathOf = (handle?: DocumentHandle | null) =>
   handle && 'desktopPath' in handle ? handle.desktopPath : null;
 
-/** Own format first, so it is what the save dialog offers by default. */
-const FILE_TYPES = [DOCUMENT_FILE_TYPE, HTML_FILE_TYPE];
+const SAVE_TYPES = [DOCUMENT_FILE_TYPE];
+const OPEN_TYPES = [DOCUMENT_FILE_TYPE, LEGACY_FILE_TYPE];
 
 /** Returns the handle when the browser supports writing back to the same file. */
 export async function saveDocument(
@@ -148,7 +155,7 @@ export async function saveDocument(
       handle ??
       (await picker.showSaveFilePicker({
         suggestedName: safeFileName(doc.title),
-        types: FILE_TYPES,
+        types: SAVE_TYPES,
       }));
     const writable = await (target as FileSystemFileHandle & { createWritable: () => Promise<FileSystemWritableFileStream> }).createWritable();
     await writable.write(html);
@@ -166,6 +173,41 @@ export async function saveDocument(
   return null;
 }
 
+/**
+ * Write the document out as markdown.
+ *
+ * Everything the styling model knows is dropped rather than smuggled out as
+ * HTML — that is what makes it markdown. See `editor/markdown.ts`.
+ */
+export async function saveMarkdown(title: string, markdown: string): Promise<string | null> {
+  const suggestedName = safeFileName(title, '.md');
+
+  const shell = desktop();
+  if (shell) {
+    const saved = await shell.saveDocument({ contents: markdown, suggestedName, kind: 'markdown' });
+    return saved?.path ?? null;
+  }
+
+  const picker = window as FilePickerWindow;
+  if (picker.showSaveFilePicker) {
+    const handle = await picker.showSaveFilePicker({ suggestedName, types: [MARKDOWN_FILE_TYPE] });
+    const writable = await (
+      handle as FileSystemFileHandle & { createWritable: () => Promise<FileSystemWritableFileStream> }
+    ).createWritable();
+    await writable.write(markdown);
+    await writable.close();
+    return suggestedName;
+  }
+
+  const url = URL.createObjectURL(new Blob([markdown], { type: 'text/markdown' }));
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = suggestedName;
+  anchor.click();
+  URL.revokeObjectURL(url);
+  return suggestedName;
+}
+
 export async function openDocument(): Promise<{ doc: DocumentFile; handle: DocumentHandle | null } | null> {
   const picker = window as FilePickerWindow;
 
@@ -176,7 +218,7 @@ export async function openDocument(): Promise<{ doc: DocumentFile; handle: Docum
   }
 
   if (picker.showOpenFilePicker) {
-    const [handle] = await picker.showOpenFilePicker({ types: FILE_TYPES, multiple: false });
+    const [handle] = await picker.showOpenFilePicker({ types: OPEN_TYPES, multiple: false });
     if (!handle) return null;
     const file = await handle.getFile();
     return { doc: parseDocument(await file.text()), handle };
@@ -185,7 +227,7 @@ export async function openDocument(): Promise<{ doc: DocumentFile; handle: Docum
   return new Promise((resolve) => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = `${DOCUMENT_EXTENSION},${LEGACY_EXTENSION},.html,.htm,text/html`;
+    input.accept = `${DOCUMENT_EXTENSION},.htm,${LEGACY_EXTENSIONS.join(',')},text/html`;
     input.onchange = async () => {
       const file = input.files?.[0];
       resolve(file ? { doc: parseDocument(await file.text()), handle: null } : null);

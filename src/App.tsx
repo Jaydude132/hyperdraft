@@ -19,6 +19,7 @@ import { buildContextMenu } from './components/documentMenu';
 import { StylePanel } from './components/StylePanel';
 import { TableGrips } from './components/TableGrips';
 import { TabStrip } from './components/TabStrip';
+import { documentToMarkdown } from './editor/markdown';
 import { PageSheets } from './components/PageSheets';
 import { IconInfo, IconMark } from './components/icons';
 import { SvgCheatSheet } from './components/SvgCheatSheet';
@@ -35,7 +36,7 @@ import { RawHtml } from './editor/extensions/RawHtml';
 import { Pagination } from './editor/pagination';
 import { geometryFor, type PageSizeName } from './editor/geometry';
 import { STARTER_DOCUMENT } from './editor/starterDocument';
-import { openDocument, saveDocument } from './io/documentFile';
+import { openDocument, saveDocument, saveMarkdown } from './io/documentFile';
 import type { DocumentHandle } from './io/documentFile';
 import { desktop } from './io/desktop';
 import { setPageBox } from './io/pageBox';
@@ -249,6 +250,16 @@ export default function App() {
       if ((error as DOMException)?.name !== 'AbortError') console.error(error);
     }
   }, [editor]);
+
+  const handleExportMarkdown = useCallback(async () => {
+    if (!editor) return;
+    try {
+      const saved = await saveMarkdown(title, documentToMarkdown(editor.state.doc, title));
+      if (saved) setNotice(`Exported ${saved.split('/').pop()}`);
+    } catch (error) {
+      if ((error as DOMException)?.name !== 'AbortError') console.error(error);
+    }
+  }, [editor, title]);
 
   /** Park the editor's content back on its own tab before leaving it. */
   const stashActive = useCallback(() => {
@@ -521,7 +532,25 @@ export default function App() {
             onNew={newDocument}
             onOpen={handleOpen}
             onSave={handleSave}
-            onExport={() => void handleExportPdf()}
+            onExport={(anchor) =>
+              setMenu({
+                anchor,
+                entries: [
+                  {
+                    kind: 'item',
+                    label: 'PDF…',
+                    hint: 'Pages exactly as measured',
+                    run: () => void handleExportPdf(),
+                  },
+                  {
+                    kind: 'item',
+                    label: 'Markdown…',
+                    hint: 'Content only, no styling',
+                    run: () => void handleExportMarkdown(),
+                  },
+                ],
+              })
+            }
             onEditMarkup={openMarkupEditor}
             theme={theme}
           />
