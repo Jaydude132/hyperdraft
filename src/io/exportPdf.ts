@@ -26,6 +26,9 @@ const STYLE_ID = 'hwp-export-styles';
 /** Long enough for pagination to re-settle after the gutter is dropped. */
 const SETTLE_MS = 400;
 
+/** How long to hold the export layout if `afterprint` never arrives. */
+const PRINT_TIMEOUT_MS = 120000;
+
 /** Exported so the pagination checks can put a page into export state. */
 export function exportStyles(pageSize: PageSizeName): string {
   return `
@@ -116,6 +119,32 @@ function continuousStyles(width: number, height: number): string {
 `;
 }
 
+/**
+ * Print, and wait for the dialog to close.
+ *
+ * `window.print()` does not reliably block — called from a promise
+ * continuation, Chrome returns immediately — so anything that undoes the print
+ * layout on the next line pulls the page out from under the preview while it
+ * is still rendering. The dialog flashes up and vanishes.
+ */
+export async function printAndWait(): Promise<void> {
+  await new Promise<void>((resolve) => {
+    let settled = false;
+    const done = () => {
+      if (settled) return;
+      settled = true;
+      window.removeEventListener('afterprint', done);
+      window.clearTimeout(timer);
+      resolve();
+    };
+    // A browser that never fires afterprint must not strand the document in
+    // export layout for the rest of the session.
+    const timer = window.setTimeout(done, PRINT_TIMEOUT_MS);
+    window.addEventListener('afterprint', done);
+    window.print();
+  });
+}
+
 export type ExportHooks = {
   /** Switch the document into export geometry (no gutter) and re-paginate. */
   prepare: () => void;
@@ -188,7 +217,7 @@ export async function exportPdf({
       return saved?.path ?? null;
     }
 
-    window.print();
+    await printAndWait();
     return null;
   } finally {
     document.title = previousTitle;

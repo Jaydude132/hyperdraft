@@ -138,7 +138,7 @@ column you selected.
 **Table styles** is Word's borders-and-shading dialog backed by CSS, in tabs:
 a **gallery** of built-in styles, **Borders** (style, weight, colour, which
 edges to stamp, cell shading), **Header**, **Rows** (banding and inner rules)
-and **Shape** (corners and elevation). One group shows at a time on purpose —
+and **Corners**. One group shows at a time on purpose —
 as a single column of every control it had, the panel grew tall enough to
 cover the document it was styling, and the thing being styled is the thing you
 need to see.
@@ -182,8 +182,9 @@ every cell's.
 
 ## Shape
 
-Corners and elevation are shared by tables, sections, code blocks and images,
-and they live together in the Shape group of the styles panel.
+Corners and elevation are shared by tables, sections, code blocks and images.
+Corners get a group of their own in the styles panel; elevation sits with each
+block's style, since a shadow is a look rather than a shape.
 
 **Elevation** is four steps — none, soft, lifted, floating — rather than a free
 hand with `box-shadow`. A shadow is a physical claim about how far something

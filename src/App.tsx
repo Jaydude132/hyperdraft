@@ -40,7 +40,7 @@ import { openDocument, saveDocument, saveMarkdown } from './io/documentFile';
 import type { DocumentHandle, DocumentLayout } from './io/documentFile';
 import { desktop } from './io/desktop';
 import { setPageBox } from './io/pageBox';
-import { exportPdf } from './io/exportPdf';
+import { exportPdf, printAndWait } from './io/exportPdf';
 
 import './styles/document.css';
 import './styles/print.css';
@@ -367,16 +367,21 @@ export default function App() {
     [editor, tabs, theme, pageSize, layout, load],
   );
 
-  const handlePrint = useCallback(() => {
+  const handlePrint = useCallback(async () => {
     const shell = desktop();
     if (shell) {
-      void shell.print();
+      await shell.print();
       return;
     }
+    // The title is what the browser offers as the PDF's filename, so it has to
+    // outlive the dialog rather than be put back on the next line.
     const previous = document.title;
     document.title = title;
-    window.print();
-    document.title = previous;
+    try {
+      await printAndWait();
+    } finally {
+      document.title = previous;
+    }
   }, [title]);
 
   const handleExportPdf = useCallback(async () => {
@@ -478,7 +483,7 @@ export default function App() {
       }
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'p') {
         event.preventDefault();
-        handlePrint();
+        void handlePrint();
       }
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'n') {
         event.preventDefault();

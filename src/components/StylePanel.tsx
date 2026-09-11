@@ -110,19 +110,19 @@ const TABS: Record<string, { id: string; label: string }[]> = {
     { id: 'borders', label: 'Borders' },
     { id: 'header', label: 'Header' },
     { id: 'rows', label: 'Rows' },
-    { id: 'shape', label: 'Shape' },
+    { id: 'corners', label: 'Corners' },
   ],
   callout: [
     { id: 'section', label: 'Section' },
-    { id: 'shape', label: 'Shape' },
+    { id: 'corners', label: 'Corners' },
   ],
   codeBlock: [
     { id: 'code', label: 'Code' },
-    { id: 'shape', label: 'Shape' },
+    { id: 'corners', label: 'Corners' },
   ],
   image: [
     { id: 'image', label: 'Image' },
-    { id: 'shape', label: 'Shape' },
+    { id: 'corners', label: 'Corners' },
   ],
 };
 
@@ -589,6 +589,19 @@ export function StylePanel({ editor, onClose }: { editor: Editor; onClose: () =>
             <p className="panel-note panel-note--tight">
               A style replaces the whole look, including anything set on single cells.
             </p>
+
+            <Segmented
+              label="Elevation"
+              value={inTable ? state.tableShadow : state.shadow}
+              fallback=""
+              options={SHADOW_LEVELS.map((level) => ({ value: level.value, label: level.label }))}
+              disabled={cellsOnly}
+              onChange={setShadow}
+            />
+            <p className="panel-note panel-note--tight">
+              A shadow lifts the block off the page, on screen and on paper.
+            </p>
+
           </>
         ) : null}
 
@@ -795,21 +808,50 @@ export function StylePanel({ editor, onClose }: { editor: Editor; onClose: () =>
             {state.alert ? (
               <p className="panel-note panel-note--tight">An alert brings its own colours.</p>
             ) : null}
+
+            <Segmented
+              label="Elevation"
+              value={inTable ? state.tableShadow : state.shadow}
+              fallback=""
+              options={SHADOW_LEVELS.map((level) => ({ value: level.value, label: level.label }))}
+              disabled={cellsOnly}
+              onChange={setShadow}
+            />
+            <p className="panel-note panel-note--tight">
+              A shadow lifts the block off the page, on screen and on paper.
+            </p>
+
           </>
         ) : null}
 
         {inCode && tab === 'code' ? (
-          <div className="panel-field">
-            <span className="panel-label">Theme</span>
-            <AttributePicker
-              options={CODE_THEMES}
-              value={state.codeTheme}
-              label="Code block theme"
-              width={150}
-              menuWidth={170}
-              onSelect={(value) => editor.commands.updateAttributes('codeBlock', { codeTheme: value })}
+          <>
+            <div className="panel-field">
+              <span className="panel-label">Theme</span>
+              <AttributePicker
+                options={CODE_THEMES}
+                value={state.codeTheme}
+                label="Code block theme"
+                width={150}
+                menuWidth={170}
+                onSelect={(value) =>
+                  editor.commands.updateAttributes('codeBlock', { codeTheme: value })
+                }
+              />
+            </div>
+
+            <Segmented
+              label="Elevation"
+              value={inTable ? state.tableShadow : state.shadow}
+              fallback=""
+              options={SHADOW_LEVELS.map((level) => ({ value: level.value, label: level.label }))}
+              disabled={cellsOnly}
+              onChange={setShadow}
             />
-          </div>
+            <p className="panel-note panel-note--tight">
+              A shadow lifts the block off the page, on screen and on paper.
+            </p>
+          </>
         ) : null}
 
         {inImage && tab === 'image' ? (
@@ -833,20 +875,6 @@ export function StylePanel({ editor, onClose }: { editor: Editor; onClose: () =>
             <p className="panel-note panel-note--tight">
               A matte pads the image in a colour, the way a mounted photograph is framed.
             </p>
-          </>
-        ) : null}
-
-        {tab === 'shape' ? (
-          <>
-            <div className="panel-field">
-              <span className={`panel-label${cellsOnly ? ' panel-label--off' : ''}`}>Corners</span>
-              <CornerPicker
-                value={inTable ? tableCorners : blockCorners}
-                max={inSection ? 40 : 32}
-                disabled={cellsOnly}
-                onChange={setCorners}
-              />
-            </div>
 
             <Segmented
               label="Elevation"
@@ -859,7 +887,19 @@ export function StylePanel({ editor, onClose }: { editor: Editor; onClose: () =>
             <p className="panel-note panel-note--tight">
               A shadow lifts the block off the page, on screen and on paper.
             </p>
+
           </>
+        ) : null}
+
+        {tab === 'corners' ? (
+          <div className="panel-field">
+            <CornerPicker
+              value={inTable ? tableCorners : blockCorners}
+              max={inSection ? 40 : 32}
+              disabled={cellsOnly}
+              onChange={setCorners}
+            />
+          </div>
         ) : null}
 
         <button
