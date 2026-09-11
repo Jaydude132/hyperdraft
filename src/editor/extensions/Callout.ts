@@ -2,6 +2,7 @@ import { Node, mergeAttributes, wrappingInputRule } from '@tiptap/core';
 import { TextSelection } from '@tiptap/pm/state';
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import { cornersAttribute } from '../corners';
+import { shadowAttribute } from '../shadow';
 
 export type CalloutVariant = 'plain' | 'note' | 'warning' | 'quiet';
 
@@ -96,6 +97,9 @@ export const Callout = Node.create({
 
       /** Per-corner radii, "tl tr br bl" in px. See `editor/corners.ts`. */
       corners: cornersAttribute('sec'),
+
+      /** Elevation. See `editor/shadow.ts`. */
+      shadow: shadowAttribute(),
     };
   },
 

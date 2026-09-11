@@ -473,10 +473,51 @@
 .hwp-doc tr:last-child > *:last-child { border-bottom-right-radius: max(0px, calc(var(--tbl-c-br, 10px) - var(--tbl-bw, 1px))); }
 .hwp-doc tr:last-child > *:first-child { border-bottom-left-radius: max(0px, calc(var(--tbl-c-bl, 10px) - var(--tbl-bw, 1px))); }
 
+/* --- Elevation -------------------------------------------------------------
+   Shared by every block that can be lifted, so two elevated things on a page
+   agree with each other. Printed as well as drawn: a shadow that vanishes on
+   paper makes the document a different document. */
+
+.hwp-doc [data-shadow] {
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+.hwp-doc [data-shadow="soft"] {
+  box-shadow: 0 1px 2px rgba(20, 24, 33, 0.06), 0 2px 6px rgba(20, 24, 33, 0.07);
+}
+.hwp-doc [data-shadow="lift"] {
+  box-shadow: 0 2px 4px rgba(20, 24, 33, 0.07), 0 8px 20px rgba(20, 24, 33, 0.1);
+}
+.hwp-doc [data-shadow="float"] {
+  box-shadow: 0 6px 14px rgba(20, 24, 33, 0.1), 0 20px 44px rgba(20, 24, 33, 0.16);
+}
+
+/* A table's shadow belongs to the table, but `border-collapse: separate` means
+   the element itself paints nothing — the cells do. Giving it a background
+   makes the shadow read as coming from one object. */
+.hwp-doc table[data-shadow] { background: #fff; }
+
 /* --- Figures, images, embedded SVG ---------------------------------------- */
 
 .hwp-doc img,
 .hwp-doc svg { max-width: 100%; height: auto; }
+
+/* An image is a block that can be styled like the others: rounded, matted,
+   lifted. The matte is padding in a fill colour — the frame a photograph gets
+   when it is mounted rather than pasted. */
+.hwp-doc img {
+  display: block;
+  border-radius: var(--img-r-tl, 0) var(--img-r-tr, 0) var(--img-r-br, 0) var(--img-r-bl, 0);
+  margin-bottom: 0.9em;
+}
+.hwp-doc img[data-fill] {
+  padding: 0.7em;
+  background: var(--img-fill, var(--tint));
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+.hwp-doc img[data-align="center"] { margin-left: auto; margin-right: auto; }
+.hwp-doc img[data-align="right"] { margin-left: auto; }
 
 .hwp-doc .hwp-raw {
   margin-bottom: 0.85em;

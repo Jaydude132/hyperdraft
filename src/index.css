@@ -625,8 +625,8 @@ body {
   top: 88px;
   right: 22px;
   z-index: 50;
-  width: 296px;
-  max-height: calc(100% - 130px);
+  width: 286px;
+  max-height: calc(100% - 150px);
   display: flex;
   flex-direction: column;
   border: 1px solid var(--chrome-line);
@@ -665,6 +665,37 @@ body {
 .panel-preview th, .panel-preview td { padding: 4px 7px; }
 
 .panel-body { padding: 12px 14px 14px; overflow-y: auto; }
+
+/* --- Style groups ------------------------------------------------------------
+   One group at a time. The panel used to be a column of every control the
+   block had, tall enough to cover the document it was styling — and the thing
+   being styled is the thing you need to see. */
+.panel-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 6px 8px 0;
+  border-bottom: 1px solid var(--chrome-line);
+  background: var(--chrome);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.panel-tabs::-webkit-scrollbar { display: none; }
+.panel-tab {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 26px;
+  padding: 0 8px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--chrome-ink-faint);
+  font-family: inherit;
+  font-size: 11.5px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.panel-tab:hover { color: var(--chrome-ink-soft); }
+.panel-tab.is-active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
 .panel-field { margin-bottom: 13px; }
 .panel-label {
   display: block;

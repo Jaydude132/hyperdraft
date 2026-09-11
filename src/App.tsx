@@ -7,7 +7,7 @@ import { TableKit } from '@tiptap/extension-table';
 import Highlight from '@tiptap/extension-highlight';
 import { TextStyleKit } from '@tiptap/extension-text-style';
 import TextAlign from '@tiptap/extension-text-align';
-import Image from '@tiptap/extension-image';
+import { DocumentImage } from './editor/extensions/DocumentImage';
 import { TaskItem, TaskList } from '@tiptap/extension-list';
 
 import { Toolbar } from './components/Toolbar';
@@ -151,7 +151,7 @@ export default function App() {
       TableStyle,
       TableSelection,
       Callout,
-      Image.configure({ inline: false, allowBase64: true }),
+      DocumentImage.configure({ inline: false, allowBase64: true }),
       TaskList,
       TaskItem.configure({ nested: true }),
       MarkdownRules,

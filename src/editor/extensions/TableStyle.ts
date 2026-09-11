@@ -32,6 +32,7 @@ export type TableAppearance = {
   headerAlign: 'left' | 'center' | 'right' | null;
   headerCase: 'upper' | 'small' | null;
   headerRule: boolean | null;
+  shadow: string | null;
   bandFill: string | null;
   innerBorders: 'all' | 'horizontal' | 'vertical' | 'none' | null;
   stripe: boolean | null;
@@ -75,6 +76,7 @@ export const TABLE_DATA_ATTRIBUTES = [
   { attribute: 'stripe', name: 'data-stripe' },
   { attribute: 'headerCase', name: 'data-header-case' },
   { attribute: 'headerRule', name: 'data-header-rule' },
+  { attribute: 'shadow', name: 'data-shadow' },
 ] as const;
 
 /** The appearance as a React style object — for previews and gallery cards. */
@@ -225,6 +227,7 @@ export const TableStyle = Extension.create({
 
     tableAttributes.innerBorders = dataAttribute('innerBorders', 'data-inner');
     tableAttributes.headerCase = dataAttribute('headerCase', 'data-header-case');
+    tableAttributes.shadow = dataAttribute('shadow', 'data-shadow');
     tableAttributes.stripe = flag('stripe', 'data-stripe');
     tableAttributes.headerRule = flag('headerRule', 'data-header-rule');
 

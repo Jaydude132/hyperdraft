@@ -135,10 +135,13 @@ browser's own caret move is read back by ProseMirror's DOM observer *after* the
 menu has been built — so the menu would act on a single cell instead of the
 column you selected.
 
-**Table styles** is Word's borders-and-shading dialog backed by CSS, grouped
-into sections: a **gallery** of built-in styles, **Borders** (style, weight,
-colour, which edges to stamp, cell shading), **Header row**, **Rows** (banding
-and its colour), **Corners**, and **Table** (inner rules).
+**Table styles** is Word's borders-and-shading dialog backed by CSS, in tabs:
+a **gallery** of built-in styles, **Borders** (style, weight, colour, which
+edges to stamp, cell shading), **Header**, **Rows** (banding and inner rules)
+and **Shape** (corners and elevation). One group shows at a time on purpose —
+as a single column of every control it had, the panel grew tall enough to
+cover the document it was styling, and the thing being styled is the thing you
+need to see.
 
 The gallery's eight styles are complete appearances rather than patches: every
 attribute a table understands appears in each one, with `null` meaning "follow
@@ -176,6 +179,24 @@ Borders can be stamped on all, outside, inside, or one edge. "Outside" and
 "inside" are relative to the *selection* rather than the table, which is what
 makes "give this column a right border" mean the column's outer edge instead of
 every cell's.
+
+## Shape
+
+Corners and elevation are shared by tables, sections, code blocks and images,
+and they live together in the Shape group of the styles panel.
+
+**Elevation** is four steps — none, soft, lifted, floating — rather than a free
+hand with `box-shadow`. A shadow is a physical claim about how far something
+floats, and a document where every table floats at a slightly different height
+looks like an accident rather than a design. The steps print as well as draw:
+a shadow that vanishes on paper makes the document a different document. See
+`editor/shadow.ts`.
+
+**Images** are blocks like any other: aligned, rounded, lifted, and matted —
+padding in a fill colour, the frame a photograph gets when it is mounted
+rather than pasted. An image is selected rather than entered, so both the
+ribbon and the panel find it in the selection rather than among the caret's
+ancestors. See `editor/extensions/DocumentImage.ts`.
 
 ## Corners
 

@@ -5,6 +5,7 @@ import { NodeViewContent, NodeViewWrapper, ReactNodeViewRenderer } from '@tiptap
 import type { NodeViewProps } from '@tiptap/react';
 import { AttributePicker } from '../../components/AttributePicker';
 import { cornersAttribute, cornerStyleObject } from '../corners';
+import { shadowAttribute } from '../shadow';
 import { CODE_LANGUAGES, languageLabel, lowlight } from '../highlighting';
 
 /**
@@ -86,6 +87,7 @@ function CodeBlockView({ node, updateAttributes, editor }: NodeViewProps) {
         data-language={languageLabel(language)}
         data-filename={filename || undefined}
         data-code-theme={codeTheme}
+        data-shadow={(node.attrs.shadow as string) || undefined}
         style={cornerStyleObject(node.attrs.corners, 'code')}
       >
         <NodeViewContent<'code'> as="code" className={`language-${language}`} />
@@ -109,6 +111,9 @@ export const CodeBlock = CodeBlockLowlight.extend({
 
       /** Per-corner radii, "tl tr br bl" in px. See `editor/corners.ts`. */
       corners: cornersAttribute('code'),
+
+      /** Elevation. See `editor/shadow.ts`. */
+      shadow: shadowAttribute(),
 
       /** Code reads better dark, so that is the default; per block it can flip. */
       codeTheme: {

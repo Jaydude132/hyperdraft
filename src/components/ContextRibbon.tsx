@@ -4,6 +4,7 @@ import type { AlertKind } from '../editor/extensions/Callout';
 import { useEditorState } from '@tiptap/react';
 import { CODE_LANGUAGES, CODE_THEMES } from '../editor/highlighting';
 import { innermostNode } from '../editor/selection';
+import { NodeSelection } from '@tiptap/pm/state';
 import { ALERT_KINDS, defaultAlertLabel } from '../editor/extensions/Callout';
 import { AttributePicker } from './AttributePicker';
 import {
@@ -64,6 +65,12 @@ const ALERT_OPTIONS = [
   ...ALERT_KINDS.map((kind) => ({ value: kind.value, label: kind.label })),
 ];
 
+const IMAGE_ALIGNMENTS = [
+  { value: 'left', label: 'Left' },
+  { value: 'center', label: 'Centre' },
+  { value: 'right', label: 'Right' },
+];
+
 const SECTION_VARIANTS = [
   { value: 'plain', label: 'Outline' },
   { value: 'note', label: 'Tinted' },
@@ -77,7 +84,14 @@ export function ContextRibbon({ editor, onOpenStyles }: { editor: Editor; onOpen
     selector: ({ editor: instance }) => ({
       // Blocks nest, so the ribbon describes the innermost one: a code block
       // inside a bordered section is a code block, not a section.
-      context: innermostNode(instance, ['table', 'codeBlock', 'callout'])?.type.name ?? null,
+      // An image is selected rather than entered, so it is found in the
+      // selection rather than among the caret's ancestors.
+      context:
+        instance.state.selection instanceof NodeSelection &&
+        instance.state.selection.node.type.name === 'image'
+          ? 'image'
+          : (innermostNode(instance, ['table', 'codeBlock', 'callout'])?.type.name ?? null),
+      imageAlign: (instance.getAttributes('image').align as string) || 'left',
       variant: (instance.getAttributes('callout').variant as string) || 'plain',
       alert: (instance.getAttributes('callout').alert as string) || '',
       alertLabel: (instance.getAttributes('callout').label as string) || '',
@@ -93,7 +107,13 @@ export function ContextRibbon({ editor, onOpenStyles }: { editor: Editor; onOpen
 
   const at = () => editor.state.selection.from;
   const label =
-    state.context === 'table' ? 'Table' : state.context === 'codeBlock' ? 'Code block' : 'Section';
+    state.context === 'table'
+      ? 'Table'
+      : state.context === 'codeBlock'
+        ? 'Code block'
+        : state.context === 'image'
+          ? 'Image'
+          : 'Section';
 
   return (
     <div className="app-subribbon" role="toolbar" aria-label={label}>
@@ -153,6 +173,31 @@ export function ContextRibbon({ editor, onOpenStyles }: { editor: Editor; onOpen
           <div className="tb-sep" />
 
           <RibbonButton title="Table styles" label="Table styles" onClick={onOpenStyles}>
+            <IconBorders />
+          </RibbonButton>
+        </>
+      ) : state.context === 'image' ? (
+        <>
+          <span className="tb-group-label">Image</span>
+
+          <AttributePicker
+            options={IMAGE_ALIGNMENTS}
+            value={state.imageAlign}
+            label="Image alignment"
+            width={120}
+            menuWidth={140}
+            onSelect={(value) =>
+              editor
+                .chain()
+                .focus()
+                .updateAttributes('image', { align: value === 'left' ? null : value })
+                .run()
+            }
+          />
+
+          <div className="tb-sep" />
+
+          <RibbonButton title="Image styles" label="Image styles" onClick={onOpenStyles}>
             <IconBorders />
           </RibbonButton>
         </>

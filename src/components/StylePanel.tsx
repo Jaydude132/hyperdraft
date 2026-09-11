@@ -1,9 +1,10 @@
-import { useRef, useState } from 'react';
-import type { CSSProperties, ReactNode } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { CSSProperties } from 'react';
 import type { Editor } from '@tiptap/react';
 import { useEditorState } from '@tiptap/react';
 import { tableScope } from '../editor/tableScope';
 import { innermostNode } from '../editor/selection';
+import { NodeSelection } from '@tiptap/pm/state';
 import { restoreTableStyles, snapshotTableStyles } from '../editor/tableSnapshot';
 import {
   cornersEqual,
@@ -13,13 +14,14 @@ import {
   uniformCorners,
 } from '../editor/corners';
 import type { CornerRadii } from '../editor/corners';
-import { TABLE_PRESETS, activePreset } from '../editor/tablePresets';
+import { EMPTY_APPEARANCE, TABLE_PRESETS, activePreset } from '../editor/tablePresets';
 import { tableDataAttributes, tableStyleObject } from '../editor/extensions/TableStyle';
 import type { BorderTarget } from '../editor/extensions/TableSelection';
 import { CornerPicker } from './CornerPicker';
 import { AttributePicker } from './AttributePicker';
 import { CODE_THEMES } from '../editor/highlighting';
 import { ALERT_KINDS, defaultAlertLabel } from '../editor/extensions/Callout';
+import { SHADOW_LEVELS } from '../editor/shadow';
 import type { AlertKind } from '../editor/extensions/Callout';
 
 /**
@@ -94,8 +96,46 @@ const SECTION_VARIANTS = [
   { value: 'quiet', label: 'Quiet' },
 ];
 
+/**
+ * One group of controls at a time.
+ *
+ * The panel used to be a single column of every control the block had, which
+ * made it tall enough to cover the document it was styling — and the thing
+ * being styled is the thing you need to see. Tabs cost one click and give the
+ * page back.
+ */
+const TABS: Record<string, { id: string; label: string }[]> = {
+  table: [
+    { id: 'style', label: 'Style' },
+    { id: 'borders', label: 'Borders' },
+    { id: 'header', label: 'Header' },
+    { id: 'rows', label: 'Rows' },
+    { id: 'shape', label: 'Shape' },
+  ],
+  callout: [
+    { id: 'section', label: 'Section' },
+    { id: 'shape', label: 'Shape' },
+  ],
+  codeBlock: [
+    { id: 'code', label: 'Code' },
+    { id: 'shape', label: 'Shape' },
+  ],
+  image: [
+    { id: 'image', label: 'Image' },
+    { id: 'shape', label: 'Shape' },
+  ],
+};
+
+const IMAGE_FILLS = ['#f4f6fa', '#eef2f9', '#e5ecfb', '#fdf5e8', '#eaf6ee', '#f3eefb', '#16181d', '#ffffff'];
+
+const ALIGNMENTS = [
+  { value: 'left', label: 'Left' },
+  { value: 'center', label: 'Centre' },
+  { value: 'right', label: 'Right' },
+];
+
 /** The theme's own roundness for each block, mirrored from document.css. */
-const THEME_RADIUS = { table: 10, callout: 12, codeBlock: 10 } as const;
+const THEME_RADIUS = { table: 10, callout: 12, codeBlock: 10, image: 0 } as const;
 
 const TARGETS: { target: BorderTarget | 'clear'; label: string; edges: string[] }[] = [
   { target: 'all', label: 'All borders', edges: ['top', 'right', 'bottom', 'left', 'inside'] },
@@ -126,19 +166,6 @@ function BorderTargetIcon({ edges, cleared }: { edges: string[]; cleared: boolea
       ))}
       {cleared ? <path d="M3.4 12.6 12.6 3.4" stroke="#c0392b" strokeWidth="1.6" strokeLinecap="round" /> : null}
     </svg>
-  );
-}
-
-/** A titled group. `wide` marks the ones that can only style a whole table. */
-function Section({ title, wide, children }: { title: string; wide?: boolean; children: ReactNode }) {
-  return (
-    <section className="panel-section">
-      <h3 className="panel-section-title">
-        {title}
-        {wide ? <span className="panel-section-tag">Whole table</span> : null}
-      </h3>
-      {children}
-    </section>
   );
 }
 
@@ -268,7 +295,14 @@ export function StylePanel({ editor, onClose }: { editor: Editor; onClose: () =>
   const state = useEditorState({
     editor,
     selector: ({ editor: instance }) => {
-      const found = innermostNode(instance, ['table', 'codeBlock', 'callout']);
+      /* An image is a leaf: you select it rather than put the caret inside it,
+         so it is found in the selection rather than among the ancestors. */
+      const selection = instance.state.selection;
+      const selectedNode =
+        selection instanceof NodeSelection && selection.node.type.name === 'image'
+          ? selection.node
+          : null;
+      const found = selectedNode ?? innermostNode(instance, ['table', 'codeBlock', 'callout']);
       const target = found?.type.name ?? null;
       const table = instance.getAttributes('table');
       const cell = instance.isActive('tableHeader')
@@ -284,6 +318,11 @@ export function StylePanel({ editor, onClose }: { editor: Editor; onClose: () =>
         hasHeaderRow: node?.firstChild?.firstChild?.type.name === 'tableHeader',
         preset: activePreset(table),
         corners: (found?.attrs.corners as string | null) ?? null,
+        shadow: (found?.attrs.shadow as string | null) ?? '',
+        imageFill: (found?.attrs.fill as string | null) ?? null,
+        imageSrc: (found?.attrs.src as string | null) ?? null,
+        imageAlign: (found?.attrs.align as string | null) ?? null,
+        tableShadow: (table.shadow as string | null) ?? '',
         variant: (instance.getAttributes('callout').variant as string) ?? 'plain',
         alert: (instance.getAttributes('callout').alert as string) || '',
         alertLabel: (instance.getAttributes('callout').label as string) || '',
@@ -313,6 +352,7 @@ export function StylePanel({ editor, onClose }: { editor: Editor; onClose: () =>
   const inTable = state.target === 'table';
   const inCode = state.target === 'codeBlock';
   const inSection = state.target === 'callout';
+  const inImage = state.target === 'image';
   const wholeTable = inTable && state.scope === 'table';
   const cellsOnly = inTable && state.scope === 'cells';
   const idle = state.target === null;
@@ -323,6 +363,14 @@ export function StylePanel({ editor, onClose }: { editor: Editor; onClose: () =>
    * without a way out the only undo would be Cmd+Z, repeatedly.
    */
   const opened = useRef(snapshotTableStyles(editor));
+
+  const tabs = TABS[state.target ?? ''] ?? [];
+  const [tab, setTab] = useState(tabs[0]?.id ?? 'style');
+  useEffect(() => {
+    // Pointing the panel at a different kind of block starts it at that
+    // block's first group rather than on a tab that no longer exists.
+    setTab((current) => (tabs.some((entry) => entry.id === current) ? current : tabs[0]?.id ?? ''));
+  }, [state.target, tabs]);
 
   /** The line these controls draw with. A tool setting, kept in the panel. */
   const [pen, setPen] = useState({ width: 1, style: 'solid', color: '#8a919e' });
@@ -374,8 +422,17 @@ export function StylePanel({ editor, onClose }: { editor: Editor; onClose: () =>
     bl: state.cornerBl ?? state.radius ?? THEME_RADIUS.table,
   };
 
-  const blockRadius = inCode ? THEME_RADIUS.codeBlock : THEME_RADIUS.callout;
+  /* Keyed by target rather than guessed: an image is square by default, and
+     treating its corners as a section's made "All" a no-op — the value it
+     wrote matched what it thought the default was. */
+  const blockRadius = THEME_RADIUS[state.target as keyof typeof THEME_RADIUS] ?? THEME_RADIUS.callout;
   const blockCorners = parseCorners(state.corners) ?? uniformCorners(blockRadius);
+
+  const setShadow = (level: string) => {
+    const value = level || null;
+    if (inTable) apply({ shadow: value });
+    else if (state.target) editor.commands.updateAttributes(state.target, { shadow: value });
+  };
 
   const setCorners = (next: CornerRadii) => {
     if (inTable) {
@@ -410,7 +467,13 @@ export function StylePanel({ editor, onClose }: { editor: Editor; onClose: () =>
     }),
   } as CSSProperties;
 
-  const title = inCode ? 'Code block styles' : inSection ? 'Section styles' : 'Table styles';
+  const title = inCode
+    ? 'Code block styles'
+    : inSection
+      ? 'Section styles'
+      : inImage
+        ? 'Image styles'
+        : 'Table styles';
 
   const scopeText = idle
     ? 'Nothing selected'
@@ -446,8 +509,25 @@ export function StylePanel({ editor, onClose }: { editor: Editor; onClose: () =>
       </div>
 
       <div className="panel-preview hwp-doc">
-        {inCode ? (
-          <pre data-code-theme={state.codeTheme} style={cornerStyleObject(state.corners, 'code')}>
+        {inImage ? (
+          <img
+            src={state.imageSrc ?? ''}
+            alt=""
+            data-shadow={state.shadow || undefined}
+            data-fill={state.imageFill ? 'true' : undefined}
+            data-align={state.imageAlign ?? undefined}
+            style={{
+              ...cornerStyleObject(state.corners, 'img'),
+              ...(state.imageFill ? { '--img-fill': state.imageFill } : {}),
+              maxHeight: 92,
+            } as CSSProperties}
+          />
+        ) : inCode ? (
+          <pre
+            data-code-theme={state.codeTheme}
+            data-shadow={state.shadow || undefined}
+            style={cornerStyleObject(state.corners, 'code')}
+          >
             <code>{'const shape = "corners";'}</code>
           </pre>
         ) : inSection ? (
@@ -456,6 +536,7 @@ export function StylePanel({ editor, onClose }: { editor: Editor; onClose: () =>
             data-variant={state.variant}
             data-alert={state.alert || undefined}
             data-label={state.alert ? state.alertLabel || defaultAlertLabel(state.alert) : undefined}
+            data-shadow={state.shadow || undefined}
             style={cornerStyleObject(state.corners, 'sec')}
           >
             <p>A bordered section, rounded exactly as far as you like.</p>
@@ -466,6 +547,7 @@ export function StylePanel({ editor, onClose }: { editor: Editor; onClose: () =>
             data-stripe={state.stripe ? 'true' : undefined}
             data-header-case={state.headerCase ?? undefined}
             data-header-rule={state.headerRule ? 'true' : undefined}
+            data-shadow={state.tableShadow || undefined}
             style={previewStyle}
           >
             <tbody>
@@ -477,259 +559,324 @@ export function StylePanel({ editor, onClose }: { editor: Editor; onClose: () =>
         )}
       </div>
 
+      {tabs.length > 1 ? (
+        <div className="panel-tabs" role="tablist" aria-label="Style groups">
+          {tabs.map((entry) => (
+            <button
+              key={entry.id}
+              type="button"
+              role="tab"
+              aria-selected={tab === entry.id}
+              className={`panel-tab${tab === entry.id ? ' is-active' : ''}`}
+              onClick={() => setTab(entry.id)}
+            >
+              {entry.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+
       <div className={`panel-body${idle ? ' panel-body--idle' : ''}`}>
-        {inTable ? (
+        {cellsOnly && tab !== 'borders' ? (
+          <p className="panel-note panel-note--wide">
+            These style the table as a whole — clear the cell selection to use them.
+          </p>
+        ) : null}
+
+        {inTable && tab === 'style' ? (
           <>
-            <Section title="Table style" wide>
-              <PresetGallery current={state.preset} disabled={cellsOnly} onPick={pickPreset} />
-              {cellsOnly ? null : (
-                <p className="panel-note panel-note--tight">
-                  A style replaces the whole look, including anything set on single cells.
-                </p>
-              )}
-            </Section>
+            <PresetGallery current={state.preset} disabled={cellsOnly} onPick={pickPreset} />
+            <p className="panel-note panel-note--tight">
+              A style replaces the whole look, including anything set on single cells.
+            </p>
+          </>
+        ) : null}
 
-            <Section title="Borders">
-              <Segmented
-                label="Line"
-                value={pen.style}
-                fallback="solid"
-                options={BORDER_STYLES}
-                onChange={(value) => applyPen({ style: value })}
-              />
+        {inTable && tab === 'borders' ? (
+          <>
+            <Segmented
+              label="Line"
+              value={pen.style}
+              fallback="solid"
+              options={BORDER_STYLES}
+              onChange={(value) => applyPen({ style: value })}
+            />
 
-              <div className="panel-field">
-                <span className="panel-label">Thickness</span>
-                <div className="panel-slider">
-                  <input
-                    type="range"
-                    min={0.5}
-                    max={6}
-                    step={0.5}
-                    value={pen.width}
-                    onChange={(event) => applyPen({ width: Number(event.target.value) })}
-                  />
-                  <output>{pen.width}px</output>
-                </div>
+            <div className="panel-field">
+              <span className="panel-label">Thickness</span>
+              <div className="panel-slider">
+                <input
+                  type="range"
+                  min={0.5}
+                  max={6}
+                  step={0.5}
+                  value={pen.width}
+                  onChange={(event) => applyPen({ width: Number(event.target.value) })}
+                />
+                <output>{pen.width}px</output>
               </div>
+            </div>
 
-              <ColorField
-                label="Line colour"
-                value={pen.color}
-                swatches={BORDER_COLORS}
-                onChange={(value) => applyPen({ color: value ?? '#8a919e' })}
-              />
+            <ColorField
+              label="Line colour"
+              value={pen.color}
+              swatches={BORDER_COLORS}
+              onChange={(value) => applyPen({ color: value ?? '#8a919e' })}
+            />
 
-              <div className="panel-field">
-                <span className="panel-label">Draw on</span>
-                <div className="border-targets">
-                  {TARGETS.map(({ target, label, edges }) => (
-                    <button
-                      key={target}
-                      type="button"
-                      className="border-target"
-                      data-tip={label}
-                      aria-label={label}
-                      onClick={() => stamp(target)}
-                    >
-                      <BorderTargetIcon edges={edges} cleared={target === 'clear'} />
-                    </button>
-                  ))}
-                </div>
+            <div className="panel-field">
+              <span className="panel-label">Draw on</span>
+              <div className="border-targets">
+                {TARGETS.map(({ target, label, edges }) => (
+                  <button
+                    key={target}
+                    type="button"
+                    className="border-target"
+                    data-tip={label}
+                    aria-label={label}
+                    onClick={() => stamp(target)}
+                  >
+                    <BorderTargetIcon edges={edges} cleared={target === 'clear'} />
+                  </button>
+                ))}
               </div>
+            </div>
 
+            <ColorField
+              label="Shading"
+              value={state.shading}
+              swatches={FILL_COLORS}
+              onChange={(value) => editor.chain().setSelectionShading(value, wholeTable).run()}
+            />
+          </>
+        ) : null}
+
+        {inTable && tab === 'header' ? (
+          <>
+            <label className={`panel-check${cellsOnly ? ' panel-field--off' : ''}`}>
+              <input
+                type="checkbox"
+                checked={state.hasHeaderRow}
+                disabled={cellsOnly}
+                onChange={() => editor.chain().toggleHeaderRow().run()}
+              />
+              First row is a header
+            </label>
+
+            <ColorField
+              label="Fill"
+              value={state.headerFill}
+              swatches={HEADER_FILLS}
+              disabled={cellsOnly}
+              onChange={(value) => apply({ headerFill: value })}
+            />
+
+            <ColorField
+              label="Text"
+              value={state.headerInk}
+              swatches={HEADER_INKS}
+              disabled={cellsOnly}
+              onChange={(value) => apply({ headerInk: value })}
+            />
+
+            <Segmented
+              label="Weight"
+              value={state.headerWeight}
+              fallback="620"
+              options={HEADER_WEIGHTS}
+              disabled={cellsOnly}
+              onChange={(value) => apply({ headerWeight: value === '620' ? null : value })}
+            />
+
+            <Segmented
+              label="Alignment"
+              value={state.headerAlign}
+              fallback="left"
+              options={HEADER_ALIGNMENTS}
+              disabled={cellsOnly}
+              onChange={(value) => apply({ headerAlign: value === 'left' ? null : value })}
+            />
+
+            <Segmented
+              label="Letter case"
+              value={state.headerCase}
+              fallback="normal"
+              options={HEADER_CASES}
+              disabled={cellsOnly}
+              onChange={(value) => apply({ headerCase: value === 'normal' ? null : value })}
+            />
+
+            <label className={`panel-check${cellsOnly ? ' panel-field--off' : ''}`}>
+              <input
+                type="checkbox"
+                checked={state.headerRule}
+                disabled={cellsOnly}
+                onChange={(event) => apply({ headerRule: event.target.checked || null })}
+              />
+              Heavier rule under header
+            </label>
+          </>
+        ) : null}
+
+        {inTable && tab === 'rows' ? (
+          <>
+            <label className={`panel-check${cellsOnly ? ' panel-field--off' : ''}`}>
+              <input
+                type="checkbox"
+                checked={state.stripe}
+                disabled={cellsOnly}
+                onChange={(event) => apply({ stripe: event.target.checked })}
+              />
+              Banded rows
+            </label>
+
+            {state.stripe ? (
               <ColorField
-                label="Shading"
-                value={state.shading}
+                label="Band colour"
+                value={state.bandFill}
                 swatches={FILL_COLORS}
-                onChange={(value) => editor.chain().setSelectionShading(value, wholeTable).run()}
+                disabled={cellsOnly}
+                onChange={(value) => apply({ bandFill: value })}
               />
-            </Section>
-
-            {cellsOnly ? (
-              <p className="panel-note panel-note--wide">
-                The sections below style the table as a whole — clear the cell selection to use them.
-              </p>
             ) : null}
 
-            <Section title="Header row" wide>
-              <label className={`panel-check${cellsOnly ? ' panel-field--off' : ''}`}>
-                <input
-                  type="checkbox"
-                  checked={state.hasHeaderRow}
-                  disabled={cellsOnly}
-                  onChange={() => editor.chain().toggleHeaderRow().run()}
-                />
-                First row is a header
-              </label>
-
-              <ColorField
-                label="Header fill"
-                value={state.headerFill}
-                swatches={HEADER_FILLS}
-                disabled={cellsOnly}
-                onChange={(value) => apply({ headerFill: value })}
-              />
-
-              <ColorField
-                label="Header text"
-                value={state.headerInk}
-                swatches={HEADER_INKS}
-                disabled={cellsOnly}
-                onChange={(value) => apply({ headerInk: value })}
-              />
-
-              <Segmented
-                label="Weight"
-                value={state.headerWeight}
-                fallback="620"
-                options={HEADER_WEIGHTS}
-                disabled={cellsOnly}
-                onChange={(value) => apply({ headerWeight: value === '620' ? null : value })}
-              />
-
-              <Segmented
-                label="Alignment"
-                value={state.headerAlign}
-                fallback="left"
-                options={HEADER_ALIGNMENTS}
-                disabled={cellsOnly}
-                onChange={(value) => apply({ headerAlign: value === 'left' ? null : value })}
-              />
-
-              <Segmented
-                label="Letter case"
-                value={state.headerCase}
-                fallback="normal"
-                options={HEADER_CASES}
-                disabled={cellsOnly}
-                onChange={(value) => apply({ headerCase: value === 'normal' ? null : value })}
-              />
-
-              <label className={`panel-check${cellsOnly ? ' panel-field--off' : ''}`}>
-                <input
-                  type="checkbox"
-                  checked={state.headerRule}
-                  disabled={cellsOnly}
-                  onChange={(event) => apply({ headerRule: event.target.checked || null })}
-                />
-                Heavier rule under header
-              </label>
-            </Section>
-
-            <Section title="Rows" wide>
-              <label className={`panel-check${cellsOnly ? ' panel-field--off' : ''}`}>
-                <input
-                  type="checkbox"
-                  checked={state.stripe}
-                  disabled={cellsOnly}
-                  onChange={(event) => apply({ stripe: event.target.checked })}
-                />
-                Banded rows
-              </label>
-
-              {state.stripe ? (
-                <ColorField
-                  label="Band colour"
-                  value={state.bandFill}
-                  swatches={FILL_COLORS}
-                  disabled={cellsOnly}
-                  onChange={(value) => apply({ bandFill: value })}
-                />
-              ) : null}
-            </Section>
-
-            <Section title="Corners" wide>
-              <CornerPicker value={tableCorners} max={32} disabled={cellsOnly} onChange={setCorners} />
-            </Section>
-
-            <Section title="Table" wide>
-              <Segmented
-                label="Inner lines"
-                value={state.innerBorders}
-                fallback="all"
-                options={INNER_BORDERS}
-                disabled={cellsOnly}
-                onChange={(value) => apply({ innerBorders: value })}
-              />
-            </Section>
+            <Segmented
+              label="Inner lines"
+              value={state.innerBorders}
+              fallback="all"
+              options={INNER_BORDERS}
+              disabled={cellsOnly}
+              onChange={(value) => apply({ innerBorders: value })}
+            />
           </>
         ) : null}
 
-        {inSection ? (
+        {inSection && tab === 'section' ? (
           <>
-            <Section title="Section">
+            <div className="panel-field">
+              <span className="panel-label">Alert</span>
+              <AttributePicker
+                options={ALERT_OPTIONS}
+                value={state.alert}
+                label="Alert"
+                placeholder="Plain section"
+                width={150}
+                menuWidth={170}
+                onSelect={(value) => editor.commands.setAlert((value || null) as AlertKind | null)}
+              />
+            </div>
+
+            {state.alert ? (
               <div className="panel-field">
-                <span className="panel-label">Alert</span>
-                <AttributePicker
-                  options={ALERT_OPTIONS}
-                  value={state.alert}
-                  label="Alert"
-                  placeholder="Plain section"
-                  width={150}
-                  menuWidth={170}
-                  onSelect={(value) => editor.commands.setAlert((value || null) as AlertKind | null)}
+                <span className="panel-label">Label</span>
+                <input
+                  className="tb-input panel-input"
+                  value={state.alertLabel}
+                  spellCheck={false}
+                  placeholder={defaultAlertLabel(state.alert)}
+                  aria-label="Alert label"
+                  onChange={(event) =>
+                    editor.commands.updateAttributes('callout', {
+                      label: event.target.value || null,
+                    })
+                  }
                 />
               </div>
+            ) : null}
 
-              {state.alert ? (
-                <div className="panel-field">
-                  <span className="panel-label">Label</span>
-                  <input
-                    className="tb-input panel-input"
-                    value={state.alertLabel}
-                    spellCheck={false}
-                    placeholder={defaultAlertLabel(state.alert)}
-                    aria-label="Alert label"
-                    onChange={(event) =>
-                      editor.commands.updateAttributes('callout', {
-                        label: event.target.value || null,
-                      })
-                    }
-                  />
-                </div>
-              ) : null}
-
-              <Segmented
-                label="Style"
-                value={state.variant}
-                fallback="plain"
-                options={SECTION_VARIANTS}
-                disabled={Boolean(state.alert)}
-                onChange={(value) => editor.commands.updateAttributes('callout', { variant: value })}
-              />
-              {state.alert ? (
-                <p className="panel-note panel-note--tight">An alert brings its own colours.</p>
-              ) : null}
-            </Section>
-
-            <Section title="Corners">
-              <CornerPicker value={blockCorners} max={40} onChange={setCorners} />
-            </Section>
+            <Segmented
+              label="Style"
+              value={state.variant}
+              fallback="plain"
+              options={SECTION_VARIANTS}
+              disabled={Boolean(state.alert)}
+              onChange={(value) => editor.commands.updateAttributes('callout', { variant: value })}
+            />
+            {state.alert ? (
+              <p className="panel-note panel-note--tight">An alert brings its own colours.</p>
+            ) : null}
           </>
         ) : null}
 
-        {inCode ? (
+        {inCode && tab === 'code' ? (
+          <div className="panel-field">
+            <span className="panel-label">Theme</span>
+            <AttributePicker
+              options={CODE_THEMES}
+              value={state.codeTheme}
+              label="Code block theme"
+              width={150}
+              menuWidth={170}
+              onSelect={(value) => editor.commands.updateAttributes('codeBlock', { codeTheme: value })}
+            />
+          </div>
+        ) : null}
+
+        {inImage && tab === 'image' ? (
           <>
-            <Section title="Code block">
-              <div className="panel-field">
-                <span className="panel-label">Theme</span>
-                <AttributePicker
-                  options={CODE_THEMES}
-                  value={state.codeTheme}
-                  label="Code block theme"
-                  width={120}
-                  menuWidth={140}
-                  onSelect={(value) => editor.commands.updateAttributes('codeBlock', { codeTheme: value })}
-                />
-              </div>
-            </Section>
+            <Segmented
+              label="Alignment"
+              value={state.imageAlign}
+              fallback="left"
+              options={ALIGNMENTS}
+              onChange={(value) =>
+                editor.commands.updateAttributes('image', { align: value === 'left' ? null : value })
+              }
+            />
 
-            <Section title="Corners">
-              <CornerPicker value={blockCorners} max={32} onChange={setCorners} />
-            </Section>
+            <ColorField
+              label="Matte"
+              value={state.imageFill}
+              swatches={IMAGE_FILLS}
+              onChange={(value) => editor.commands.updateAttributes('image', { fill: value })}
+            />
+            <p className="panel-note panel-note--tight">
+              A matte pads the image in a colour, the way a mounted photograph is framed.
+            </p>
           </>
         ) : null}
+
+        {tab === 'shape' ? (
+          <>
+            <div className="panel-field">
+              <span className={`panel-label${cellsOnly ? ' panel-label--off' : ''}`}>Corners</span>
+              <CornerPicker
+                value={inTable ? tableCorners : blockCorners}
+                max={inSection ? 40 : 32}
+                disabled={cellsOnly}
+                onChange={setCorners}
+              />
+            </div>
+
+            <Segmented
+              label="Elevation"
+              value={inTable ? state.tableShadow : state.shadow}
+              fallback=""
+              options={SHADOW_LEVELS.map((level) => ({ value: level.value, label: level.label }))}
+              disabled={cellsOnly}
+              onChange={setShadow}
+            />
+            <p className="panel-note panel-note--tight">
+              A shadow lifts the block off the page, on screen and on paper.
+            </p>
+          </>
+        ) : null}
+
+        <button
+          type="button"
+          className="tb-btn panel-reset"
+          onClick={() =>
+            editor
+              .chain()
+              .setSelectionBorder('all', null, true)
+              .setSelectionShading(null, true)
+              .setTableAppearance(EMPTY_APPEARANCE)
+              .run()
+          }
+          hidden={!inTable}
+        >
+          Reset table to theme
+        </button>
       </div>
 
       <footer className="panel-foot">
