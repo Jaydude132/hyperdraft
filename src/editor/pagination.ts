@@ -3,6 +3,7 @@ import { Plugin, PluginKey } from '@tiptap/pm/state';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
 import type { EditorView } from '@tiptap/pm/view';
 import type { Node as PMNode } from '@tiptap/pm/model';
+import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import type { Geometry } from './geometry';
 
 /**
@@ -378,6 +379,26 @@ function splitBlock(
  * [p*stride, p*stride + contentHeight]; the space after it is the bottom
  * margin, the on-screen gutter, and the next page's top margin.
  */
+/**
+ * A top-level block, measured once so the placement pass can look ahead.
+ * Keeping a heading with what follows it needs the next block's height before
+ * the heading's position is decided.
+ */
+type Block = {
+  node: ProseMirrorNode;
+  offset: number;
+  dom: HTMLElement;
+  injected: InjectedBox[];
+  naturalHeight: number;
+  marginBottom: number;
+};
+
+/** Blocks that must not be the last thing on a page. */
+const KEEP_WITH_NEXT = new Set(['heading']);
+
+/** How much of the following block has to fit beside them. About two lines. */
+const COMPANION = 46;
+
 function measure(view: EditorView, geo: Geometry): { breaks: PageBreak[]; pageCount: number } {
   const breaks: PageBreak[] = [];
   const { stride, contentHeight } = geo;
@@ -388,9 +409,26 @@ function measure(view: EditorView, geo: Geometry): { breaks: PageBreak[]; pageCo
   const pageOf = (at: number) => Math.max(0, Math.floor((at + EPS) / stride));
   let y = 0;
 
+  const blocks: Block[] = [];
   view.state.doc.forEach((node, offset) => {
     const dom = view.nodeDOM(offset);
     if (!(dom instanceof HTMLElement)) return;
+    const injected = injectedInside(dom);
+    const alreadyInjected = injected.reduce((total, box) => total + box.height, 0);
+    blocks.push({
+      node,
+      offset,
+      dom,
+      injected,
+      naturalHeight: dom.getBoundingClientRect().height - alreadyInjected,
+      // Document blocks carry bottom margins only (see document.css), so no
+      // margin collapsing happens between siblings and the advance is exact.
+      marginBottom: parseFloat(getComputedStyle(dom).marginBottom) || 0,
+    });
+  });
+
+  blocks.forEach((block, index) => {
+    const { node, offset, dom, injected, naturalHeight, marginBottom } = block;
 
     // An explicit page break jumps to the next sheet. If we are already at the
     // top of a fresh page it is a no-op rather than a blank page.
@@ -403,12 +441,23 @@ function measure(view: EditorView, geo: Geometry): { breaks: PageBreak[]; pageCo
       return;
     }
 
-    const injected = injectedInside(dom);
-    const alreadyInjected = injected.reduce((total, box) => total + box.height, 0);
-    const naturalHeight = dom.getBoundingClientRect().height - alreadyInjected;
-    // Document blocks carry bottom margins only (see document.css), so no
-    // margin collapsing happens between siblings and the advance is exact.
-    const marginBottom = parseFloat(getComputedStyle(dom).marginBottom) || 0;
+    /* Keep a heading with what it introduces. A heading alone at the foot of a
+       page, its code block or table overleaf, is the worst break in the
+       document — it reads as a title for nothing. */
+    const next = blocks[index + 1];
+    if (
+      next &&
+      KEEP_WITH_NEXT.has(node.type.name) &&
+      next.node.type.name !== 'pageBreak' &&
+      y > pageOf(y) * stride + EPS
+    ) {
+      const needed = naturalHeight + marginBottom + Math.min(next.naturalHeight, COMPANION);
+      if (y + needed > pageOf(y) * stride + contentHeight + EPS) {
+        const nextTop = (pageOf(y) + 1) * stride;
+        breaks.push({ pos: offset, height: nextTop - y, kind: 'spacer' });
+        y = nextTop;
+      }
+    }
 
     // Fragments are only needed for a block that actually crosses a boundary,
     // and reconstructing them is the expensive part of the pass — so they are
@@ -418,8 +467,15 @@ function measure(view: EditorView, geo: Geometry): { breaks: PageBreak[]; pageCo
     const isTable = node.type.name === 'table';
     const minKeep = isTable ? MIN_ROWS : MIN_LINES;
 
+    /* A table or a code block is a picture of a thing; broken in half it reads
+       as damage rather than as continuation. So they only split when they
+       cannot fit a page on their own — at which point there is no alternative.
+       Prose still breaks at a line, which is ordinary typography. */
+    const mustSplit = naturalHeight > contentHeight + EPS;
+    const holdTogether = isTable || node.type.name === 'codeBlock';
+
     let fragments: Fragment[] = [];
-    if (overflows) {
+    if (overflows && (!holdTogether || mustSplit)) {
       if (isTable) fragments = rowFragments(view, dom, injected);
       else if (SPLITTABLE.has(node.type.name)) fragments = lineFragments(view, dom, injected);
     }
@@ -459,8 +515,20 @@ function measure(view: EditorView, geo: Geometry): { breaks: PageBreak[]; pageCo
   return { breaks, pageCount: Math.floor(Math.max(0, y - EPS) / stride) + 1 };
 }
 
+/**
+ * Continuous documents are not measured. The flow is the document, so the only
+ * question left is how many pages it would come to if it were printed — which
+ * the status bar still wants to say.
+ */
+function estimatePages(view: EditorView, geo: Geometry): number {
+  const height = view.dom.getBoundingClientRect().height;
+  return Math.max(1, Math.ceil((height - EPS) / geo.contentHeight));
+}
+
 export type PaginationOptions = {
   geometry: Geometry;
+  /** Mutable, like the geometry: the mode changes without rebuilding the editor. */
+  layout: { paged: boolean };
   onPageCount?: (count: number) => void;
 };
 
@@ -469,7 +537,13 @@ export const Pagination = Extension.create<PaginationOptions>({
 
   addOptions() {
     return {
+      /* Both of these are null by default on purpose. `configure()` deep-merges
+         options, and a plain-object default is merged into a *copy* — so the
+         live object the editor mutates would be replaced by a snapshot of it,
+         and neither the page size nor the layout would ever change again.
+         Against a null default the source object is assigned by reference. */
       geometry: null as unknown as Geometry,
+      layout: null as unknown as { paged: boolean },
       onPageCount: undefined,
     };
   },
@@ -522,7 +596,14 @@ export const Pagination = Extension.create<PaginationOptions>({
             const current = paginationKey.getState(editorView.state);
             if (!current) return;
 
-            const next = measure(editorView, options.geometry);
+            /* Export re-lays the page out for paper and back again. Measuring
+               mid-flight reports the print layout's geometry — one page, no
+               flow — and leaves the status bar lying about the document. */
+            if (document.documentElement.classList.contains('hwp-exporting')) return;
+
+            const next = options.layout.paged
+              ? measure(editorView, options.geometry)
+              : { breaks: [], pageCount: estimatePages(editorView, options.geometry) };
 
             // Reported every pass rather than deduped here: the consumer owns
             // this value, and a local cache of it goes stale across remounts.

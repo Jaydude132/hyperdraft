@@ -290,8 +290,30 @@ body {
 .hwp-page-stack {
   position: relative;
   flex: none;
+  /* Not stretched: the canvas is a row-direction flex container, so the
+     default `align-items: stretch` sized this to the window rather than to
+     the document — which a continuous sheet of paper cannot live with, since
+     the box *is* the paper. */
+  align-self: flex-start;
   width: var(--content-w);
   margin: var(--margin) 0;
+}
+
+/* Continuous: one sheet of paper as tall as the document. The stack becomes
+   the page itself — no sheets drawn behind it, no mask over it, nothing to
+   split across — and the margins that were drawn furniture become its
+   padding. */
+.hwp-page-stack[data-mode="continuous"] {
+  width: var(--page-w);
+  margin: 0 0 24px;
+  padding: var(--margin);
+  background: #fff;
+  border-radius: 2px;
+  box-shadow: var(--sheet-shadow);
+}
+.hwp-page-stack[data-mode="continuous"] .ProseMirror {
+  width: 100%;
+  min-height: calc(var(--content-h) - var(--margin));
 }
 
 .hwp-sheet-layer {

@@ -62,6 +62,8 @@ function createWindow() {
   });
 
   if (SMOKE) {
+    // A hung smoke run must not leave a window open forever.
+    setTimeout(() => app.quit(), 40000);
     mainWindow.webContents.once('did-finish-load', async () => {
       if (process.env.HWP_SMOKE_PDF) {
         // Drive the app's own export, button for button.
@@ -74,7 +76,11 @@ function createWindow() {
               select.dispatchEvent(new Event('change', { bubbles: true }));
               await new Promise((r) => setTimeout(r, 900));
             }
-            document.querySelector('button[data-tip^="Export PDF"]').click();
+            document.querySelector('button[data-tip^="Export"]').click();
+            await new Promise((r) => setTimeout(r, 500));
+            [...document.querySelectorAll('.ctx-menu button')]
+              .find((b) => b.textContent.trim().startsWith('PDF'))
+              .click();
           })()
         `);
         await new Promise((resolve) => setTimeout(resolve, 5000));

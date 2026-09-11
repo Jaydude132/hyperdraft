@@ -37,7 +37,7 @@ import { Pagination } from './editor/pagination';
 import { geometryFor, type PageSizeName } from './editor/geometry';
 import { STARTER_DOCUMENT } from './editor/starterDocument';
 import { openDocument, saveDocument, saveMarkdown } from './io/documentFile';
-import type { DocumentHandle } from './io/documentFile';
+import type { DocumentHandle, DocumentLayout } from './io/documentFile';
 import { desktop } from './io/desktop';
 import { setPageBox } from './io/pageBox';
 import { exportPdf } from './io/exportPdf';
@@ -66,6 +66,8 @@ type OpenDocument = {
   title: string;
   theme: string;
   pageSize: PageSizeName;
+  /** Continuous by default: a document is read far more often than printed. */
+  layout: DocumentLayout;
   handle: DocumentHandle | null;
   html: string;
   dirty: boolean;
@@ -89,6 +91,7 @@ export default function App() {
       title: 'Quarterly Field Report',
       theme: 'report',
       pageSize: 'Letter',
+      layout: 'continuous',
       handle: null,
       html: STARTER_DOCUMENT,
       dirty: false,
@@ -106,7 +109,7 @@ export default function App() {
   }, [activeId]);
 
   const active = tabs.find((tab) => tab.id === activeId) ?? tabs[0];
-  const { title, theme, pageSize, dirty } = active;
+  const { title, theme, pageSize, layout, dirty } = active;
 
   const patchActive = useCallback((patch: Partial<OpenDocument>) => {
     setTabs((list) => list.map((tab) => (tab.id === activeRef.current ? { ...tab, ...patch } : tab)));
@@ -125,6 +128,7 @@ export default function App() {
    * cheaper and less disruptive than rebuilding the editor.
    */
   const geometry = useRef(geometryFor('Letter'));
+  const layoutRef = useRef({ paged: false });
   const [geometryVersion, setGeometryVersion] = useState(0);
 
   const editor = useEditor({
@@ -157,6 +161,7 @@ export default function App() {
       RawHtml,
       Pagination.configure({
         geometry: geometry.current,
+        layout: layoutRef.current,
         onPageCount: setPageCount,
       }),
     ],
@@ -184,6 +189,7 @@ export default function App() {
   const applyGeometry = useCallback(
     (gutter?: number) => {
       Object.assign(geometry.current, geometryFor(pageSize, gutter));
+      layoutRef.current.paged = layout === 'paged';
       // Geometry lives in a ref so the pagination plugin can read it without
       // re-creating the editor — but the CSS custom properties below are
       // rendered, so they need a nudge or the stylesheet keeps the old stride
@@ -191,7 +197,7 @@ export default function App() {
       setGeometryVersion((version) => version + 1);
       if (editor) editor.view.dispatch(editor.state.tr);
     },
-    [editor, pageSize],
+    [editor, pageSize, layout],
   );
 
   useEffect(() => {
@@ -225,14 +231,14 @@ export default function App() {
     if (!editor) return;
     try {
       const handle = await saveDocument(
-        { title, theme, pageSize, bodyHtml: editor.getHTML() },
+        { title, theme, pageSize, layout, bodyHtml: editor.getHTML() },
         active.handle,
       );
       patchActive({ handle, dirty: false });
     } catch (error) {
       if ((error as DOMException)?.name !== 'AbortError') console.error(error);
     }
-  }, [editor, title, theme, pageSize, active.handle, patchActive]);
+  }, [editor, title, theme, pageSize, layout, active.handle, patchActive]);
 
   const handleOpen = useCallback(async () => {
     if (!editor) return;
@@ -243,6 +249,7 @@ export default function App() {
         title: result.doc.title,
         theme: result.doc.theme,
         pageSize: result.doc.pageSize,
+        layout: result.doc.layout,
         handle: result.handle,
         html: result.doc.bodyHtml,
       });
@@ -298,10 +305,11 @@ export default function App() {
       title: 'Untitled document',
       theme,
       pageSize,
+      layout,
       handle: null,
       html: EMPTY_DOCUMENT,
     });
-  }, [openInTab, theme, pageSize]);
+  }, [openInTab, theme, pageSize, layout]);
 
   const selectDocument = useCallback(
     (id: string) => {
@@ -335,6 +343,7 @@ export default function App() {
           title: 'Untitled document',
           theme,
           pageSize,
+          layout,
           handle: null,
           html: EMPTY_DOCUMENT,
           dirty: false,
@@ -355,7 +364,7 @@ export default function App() {
       }
       setTabs(remaining);
     },
-    [editor, tabs, theme, pageSize, load],
+    [editor, tabs, theme, pageSize, layout, load],
   );
 
   const handlePrint = useCallback(() => {
@@ -371,16 +380,22 @@ export default function App() {
   }, [title]);
 
   const handleExportPdf = useCallback(async () => {
-    const saved = await exportPdf({
-      title,
-      pageSize,
-      prepare: () => applyGeometry(0),
-      restore: () => applyGeometry(),
-    });
-    // Only the shell knows where the file went; a tab hands off to the browser
-    // and never hears the outcome.
-    if (saved) setNotice(`Exported ${saved.split('/').pop()}`);
-  }, [applyGeometry, title, pageSize]);
+    try {
+      const saved = await exportPdf({
+        title,
+        pageSize,
+        layout,
+        prepare: () => applyGeometry(0),
+        restore: () => applyGeometry(),
+      });
+      // Only the shell knows where the file went; a tab hands off to the
+      // browser and never hears the outcome.
+      if (saved) setNotice(`Exported ${saved.split('/').pop()}`);
+    } catch (error) {
+      if (error instanceof RangeError) setNotice(error.message);
+      else if ((error as DOMException)?.name !== 'AbortError') console.error(error);
+    }
+  }, [applyGeometry, title, pageSize, layout]);
 
   /** The `@page` box has to be rewritten whenever the paper changes. */
   useEffect(() => {
@@ -506,6 +521,17 @@ export default function App() {
         </select>
         <select
           className="tb-select"
+          value={layout}
+          aria-label="Layout"
+          onChange={(event) =>
+            patchActive({ layout: event.target.value as DocumentLayout, dirty: true })
+          }
+        >
+          <option value="continuous">Continuous</option>
+          <option value="paged">Pages</option>
+        </select>
+        <select
+          className="tb-select"
           value={pageSize}
           aria-label="Page size"
           onChange={(event) => patchActive({ pageSize: event.target.value as PageSizeName })}
@@ -563,8 +589,13 @@ export default function App() {
       )}
 
       <div className="app-canvas" onContextMenu={handleContextMenu}>
-        <div className="hwp-page-stack hwp-doc" data-theme={theme} style={stackStyle}>
-          <PageSheets pageCount={pageCount} />
+        <div
+          className="hwp-page-stack hwp-doc"
+          data-theme={theme}
+          data-mode={layout}
+          style={stackStyle}
+        >
+          {layout === 'paged' ? <PageSheets pageCount={pageCount} /> : null}
           <EditorContent editor={editor} />
           {editor ? <TableGrips editor={editor} /> : null}
         </div>

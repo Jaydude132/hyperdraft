@@ -12,9 +12,13 @@ import printCss from '../styles/print.css?raw';
  * correctly with no application installed, and diffs in git.
  */
 
+/** How the document is laid out on screen and in a PDF. */
+export type DocumentLayout = 'continuous' | 'paged';
+
 export type DocumentFile = {
   title: string;
   theme: string;
+  layout: DocumentLayout;
   bodyHtml: string;
   /** The paper it was written for. A saved A4 file must print as A4. */
   pageSize: PageSizeName;
@@ -56,7 +60,7 @@ ${printCss.trim()}
 ${pageBoxCss(doc.pageSize ?? 'Letter', '1in')}
 </style>
 </head>
-<body class="hwp-doc" data-theme="${escapeHtml(doc.theme)}" data-page-size="${escapeHtml(doc.pageSize ?? 'Letter')}">
+<body class="hwp-doc" data-theme="${escapeHtml(doc.theme)}" data-page-size="${escapeHtml(doc.pageSize ?? 'Letter')}" data-layout="${escapeHtml(doc.layout ?? 'continuous')}">
 ${highlightCodeBlocks(doc.bodyHtml)}
 </body>
 </html>
@@ -73,6 +77,7 @@ export function parseDocument(html: string): DocumentFile {
   return {
     title: parsed.title || 'Untitled document',
     theme: body?.getAttribute('data-theme') || 'report',
+    layout: body?.getAttribute('data-layout') === 'paged' ? 'paged' : 'continuous',
     pageSize: (size in PAGE_SIZES ? size : 'Letter') as PageSizeName,
     bodyHtml: body?.innerHTML.trim() ?? '',
   };

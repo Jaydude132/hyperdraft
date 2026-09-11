@@ -13,7 +13,8 @@
 import { chromium } from 'playwright';
 import { mkdirSync } from 'node:fs';
 
-// Only tails in front of splittable content count against the build.
+// Only tails in front of content that could have moved up count against the
+// build. See the classification below.
 const gradedTail = (list) => list.reduce((worst, t) => (t.blocking ? worst : Math.max(worst, t.unusedPx)), 0);
 
 const url = process.argv[2] || 'http://localhost:5173/';
@@ -29,6 +30,11 @@ page.on('pageerror', (error) => consoleErrors.push(String(error)));
 
 await page.goto(url, { waitUntil: 'networkidle' });
 await page.waitForSelector('.ProseMirror');
+await page.waitForTimeout(1200);
+
+// Documents are continuous by default now, which has no page breaks to check.
+// Everything below is about the paged layout, so switch into it first.
+await page.selectOption('.app-titlebar select[aria-label="Layout"]', 'paged');
 await page.waitForTimeout(2000);
 
 
@@ -89,9 +95,18 @@ const probe = () => page.evaluate(() => {
   for (const [page, bottom] of [...bottoms].sort((a, b) => a[0] - b[0])) {
     if (page === lastPage) continue;
     const next = firstOnPage.get(page + 1);
-    // Only a bordered section still refuses to split; a gap in front of one is
-    // a deliberate limitation, not a regression.
-    const blocking = next && next.closest('section.hwp-callout') ? 'section' : null;
+    /* A gap in front of a block that is meant to stay whole is the feature,
+       not a regression: sections never split, and tables and code blocks only
+       split when they cannot fit a page on their own. A heading held back to
+       stay with what it introduces is the same thing. */
+    const held = next && (
+      next.closest('section.hwp-callout') ? 'section'
+      : next.closest('table') ? 'table'
+      : next.closest('pre') || next.closest('.hwp-codeblock') ? 'code'
+      : /^H[1-6]$/.test(next.tagName) ? 'heading'
+      : null
+    );
+    const blocking = held;
     tails.push({
       page: page + 1,
       unusedPx: Math.round(page * stride + contentHeight - bottom),

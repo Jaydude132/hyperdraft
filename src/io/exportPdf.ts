@@ -17,7 +17,9 @@
 
 import { desktop } from './desktop';
 import { pageBoxCss } from './pageBox';
+import { PAGE_SIZES } from '../editor/geometry';
 import type { PageSizeName } from '../editor/geometry';
+import type { DocumentLayout } from './documentFile';
 
 const STYLE_ID = 'hwp-export-styles';
 
@@ -71,6 +73,49 @@ ${pageBoxCss(pageSize, '0')}
 `;
 }
 
+/** PDF's own ceiling: 200 inches on a side. Beyond it, pages are the only way. */
+const MAX_PDF_EDGE = 200 * 96;
+
+/**
+ * A continuous document exports as a single page as tall as itself.
+ *
+ * The paper is sized to the content rather than the content cut to the paper,
+ * so there are no breaks to place and nothing to split — which is the whole
+ * reason the mode exists. Width and padding are restated here because the
+ * print stylesheet collapses the editing column, and the height measured on
+ * screen would not survive that.
+ */
+function continuousStyles(width: number, height: number): string {
+  return `
+@page { size: ${width}px ${height}px; margin: 0; }
+
+@media print {
+  html.hwp-exporting .app-canvas { padding: 0 !important; display: block !important; }
+  html.hwp-exporting .hwp-page-stack {
+    width: ${width}px !important;
+    padding: var(--margin) !important;
+    margin: 0 !important;
+    background: #fff !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+  }
+  html.hwp-exporting .hwp-doc .ProseMirror { width: 100% !important; min-height: 0 !important; }
+
+  /* One page, so nothing may decide to start a new one. */
+  html.hwp-exporting .hwp-doc *,
+  html.hwp-exporting .hwp-doc *::before,
+  html.hwp-exporting .hwp-doc *::after {
+    break-inside: auto !important;
+    break-before: auto !important;
+    break-after: auto !important;
+    orphans: 1 !important;
+    widows: 1 !important;
+  }
+  html.hwp-exporting .hwp-doc .hwp-hard-break { break-after: auto !important; }
+}
+`;
+}
+
 export type ExportHooks = {
   /** Switch the document into export geometry (no gutter) and re-paginate. */
   prepare: () => void;
@@ -79,20 +124,52 @@ export type ExportHooks = {
   title: string;
   /** The paper the document is measured for; the page box must agree. */
   pageSize: PageSizeName;
+  /** Continuous exports one tall page; paged exports the pages as measured. */
+  layout: DocumentLayout;
 };
 
 /** The saved path in the desktop shell; null in a browser, which cannot know. */
-export async function exportPdf({ prepare, restore, title, pageSize }: ExportHooks): Promise<string | null> {
+export async function exportPdf({
+  prepare,
+  restore,
+  title,
+  pageSize,
+  layout,
+}: ExportHooks): Promise<string | null> {
   const style = document.createElement('style');
   style.id = STYLE_ID;
-  style.textContent = exportStyles(pageSize);
 
+  const continuous = layout === 'continuous';
   const previousTitle = document.title;
 
   try {
-    prepare();
-    document.head.appendChild(style);
+    // Paged export re-paginates with no gutter so the flow's stride is exactly
+    // one page. A continuous document has no gutter to drop.
+    if (!continuous) prepare();
     document.documentElement.classList.add('hwp-exporting');
+
+    if (continuous) {
+      const stack = document.querySelector<HTMLElement>('.hwp-page-stack');
+      const width = PAGE_SIZES[pageSize].width;
+      // Measured with the export width already in force, so the height cannot
+      // drift between what is measured and what is rendered.
+      style.textContent = continuousStyles(width, 0);
+      document.head.appendChild(style);
+      await new Promise((resolve) => window.setTimeout(resolve, 60));
+
+      const height = Math.ceil(stack?.getBoundingClientRect().height ?? PAGE_SIZES[pageSize].height);
+      if (height > MAX_PDF_EDGE) {
+        // Too tall for a PDF page to exist. Say so rather than writing a file
+        // that quietly ends early.
+        throw new RangeError(
+          'This document is too long for a single continuous page. Switch the layout to Pages and export again.',
+        );
+      }
+      style.textContent = continuousStyles(width, height);
+    } else {
+      style.textContent = exportStyles(pageSize);
+      document.head.appendChild(style);
+    }
 
     // The browser offers this as the PDF's filename.
     document.title = title;

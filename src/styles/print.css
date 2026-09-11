@@ -93,18 +93,17 @@
     widows: 2;
   }
 
-  /* Code blocks are free to break: the screen splits them at a line, so the
-     paper must too or the two page counts drift apart. */
+  /* Held whole. A browser ignores `break-inside: avoid` on a block taller than
+     the page it is on, which is exactly the wanted fallback: a table or a code
+     block splits only when it cannot fit anywhere. */
   .hwp-doc .hwp-callout,
   .hwp-doc .hwp-raw,
   .hwp-doc figure,
-  .hwp-doc tr {
+  .hwp-doc table,
+  .hwp-doc tr,
+  .hwp-doc pre,
+  .hwp-doc .hwp-codeblock {
     break-inside: avoid;
-  }
-
-  .hwp-doc pre {
-    orphans: 2;
-    widows: 2;
   }
 
   .hwp-doc thead {
