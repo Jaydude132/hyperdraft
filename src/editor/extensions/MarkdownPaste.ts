@@ -134,11 +134,40 @@ function adoptTaskLists(root: Document): void {
   }
 }
 
+/**
+ * Column alignment, moved from the cell to the paragraph inside it.
+ *
+ * marked writes `<th align="left">`, which the browser honours and the schema
+ * keeps — so the table looked right and yet the markdown serializer, which
+ * reads the paragraph's own alignment, saw nothing to write. Two
+ * representations of one thing is one too many: everything that aligns text in
+ * this editor aligns the paragraph, so an imported table does the same.
+ */
+function adoptCellAlignment(root: Document): void {
+  for (const cell of [...root.querySelectorAll('th[align], td[align]')]) {
+    const align = cell.getAttribute('align');
+    cell.removeAttribute('align');
+    if (!align) continue;
+
+    const only = cell.children.length === 1 ? cell.firstElementChild : null;
+    if (only?.tagName === 'P') {
+      (only as HTMLElement).style.textAlign = align;
+      continue;
+    }
+
+    const paragraph = root.createElement('p');
+    paragraph.style.textAlign = align;
+    while (cell.firstChild) paragraph.appendChild(cell.firstChild);
+    cell.appendChild(paragraph);
+  }
+}
+
 export function markdownToHtml(text: string): string {
   const html = marked.parse(text, { gfm: true, async: false }) as string;
   const parsed = new DOMParser().parseFromString(html, 'text/html');
   adoptAlerts(parsed);
   adoptTaskLists(parsed);
+  adoptCellAlignment(parsed);
   return parsed.body.innerHTML;
 }
 

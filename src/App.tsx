@@ -488,23 +488,42 @@ export default function App() {
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') {
+      const command = event.metaKey || event.ctrlKey;
+      if (!command) return;
+      const key = event.key.toLowerCase();
+
+      /* Shift-modified first, and each branch returns: ⌘⇧S is not ⌘S with a
+         stray modifier, and a fall-through would have saved the document on
+         the way to opening the styles panel. */
+      if (event.shiftKey) {
+        if (key === 's') {
+          event.preventDefault();
+          setStylesOpen(true);
+        }
+        return;
+      }
+
+      if (key === 's') {
         event.preventDefault();
         void handleSave();
+        return;
       }
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'o') {
+      if (key === 'o') {
         event.preventDefault();
         void handleOpen();
+        return;
       }
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'p') {
+      if (key === 'p') {
         event.preventDefault();
         void handlePrint();
+        return;
       }
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'n') {
+      if (key === 'n') {
         event.preventDefault();
         newDocument();
+        return;
       }
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'w') {
+      if (key === 'w') {
         event.preventDefault();
         closeDocument(activeRef.current);
       }
@@ -571,6 +590,7 @@ export default function App() {
             onNew={newDocument}
             onOpen={handleOpen}
             onSave={handleSave}
+            onStyles={() => setStylesOpen(true)}
             onExport={(anchor) =>
               setMenu({
                 anchor,

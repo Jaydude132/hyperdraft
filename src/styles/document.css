@@ -20,7 +20,10 @@
   --rule-strong: #c2c8d2;
   --accent: #2f5fd0;
   --tint: #f4f6fa;
-  --tint-strong: #e7ebf2;
+  /* A step darker than it was. A header that reads as "the first banded row,
+     slightly off" is not a header — it has to be obviously a different kind of
+     row, and against a #f4f6fa band it was not. */
+  --tint-strong: #dce3ed;
   --tint-warn: #fdf5e8;
   --rule-warn: #e6cf9f;
 

@@ -112,7 +112,10 @@ function tableOf(node: ProseMirrorNode): string {
       // A pipe inside a cell would end it early.
       cells.push(blocksOf(cell).replace(/\n+/g, ' ').replace(/\|/g, '\\|').trim());
       if (alignments[index] === undefined) {
-        alignments[index] = (cell.firstChild?.attrs.textAlign as string) ?? '';
+        // The paragraph is where alignment lives; `align` on the cell is what
+        // older imports left behind.
+        alignments[index] =
+          (cell.firstChild?.attrs.textAlign as string) ?? (cell.attrs.align as string) ?? '';
       }
     });
     rows.push({ cells, header });

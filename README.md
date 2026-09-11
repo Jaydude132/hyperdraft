@@ -400,6 +400,24 @@ electron/
 scripts/check-pagination.mjs
 ```
 
+## Reaching things quickly
+
+Two shortcuts, both about the block under the caret rather than a mode of the
+application:
+
+```
+⌘⇧M   edit this block as markdown
+⌘⇧S   styles for this block — table, section, code block or image
+```
+
+Both are also toolbar buttons and right-click entries, because a shortcut
+nobody has been told about is not a feature. The styles panel titles itself
+after what it found, so there is never a question of what it will act on.
+
+Text alignment — left, centre, right, justify — lives in the toolbar and
+applies to headings, paragraphs and the paragraphs inside table cells, which is
+what makes a markdown table's `:---:` mean something after it is imported.
+
 ## Text
 
 Font family and size are on the main ribbon, backed by `TextStyleKit`, and
@@ -445,8 +463,13 @@ is a pile of `<div>`s and inline colours) which used to arrive as a code
 block — the source pasted in as a picture of itself. Anything that does not
 look like markdown falls through to ProseMirror's own paste handling, and
 inside a code block markdown stays content rather than format.
-`marked` does the parsing; alerts and task lists are adapted afterwards,
-because a parser cannot know about this schema. See
+`marked` does the parsing; alerts, task lists and column alignment are adapted
+afterwards, because a parser cannot know about this schema. Alignment is worth
+naming: marked writes `<th align="left">`, which the browser honours and the
+schema kept, so an imported table looked right while the markdown serializer —
+which reads the paragraph's own alignment — saw nothing to write. Two
+representations of one thing is one too many, so an imported cell's alignment
+is moved onto the paragraph, where everything else in this editor puts it. See
 `editor/extensions/MarkdownPaste.ts`.
 
 **Alerts** are GitHub's, and they are the reason this editor can write
@@ -477,9 +500,16 @@ uppercase, letter-spaced, faint).
 
 ## Editing a block as markdown
 
-Ctrl- or Cmd-click a table, list, section, quote or code block and it is
-replaced on screen by the markdown it would be written as. Edit the text,
-press ⌘↵ (or Apply), and it renders again; Esc leaves it as it was. For anyone
+**⌘⇧M**, ctrl-click, or the right-click menu turns the block under the caret
+into the markdown it would be written as. Edit the text, press ⌘↵ (or Apply),
+and it renders again; Esc leaves it as it was. Paragraphs and headings count
+as blocks here even though they are already text — their marks are markdown
+too, and a shortcut that does nothing where the caret happens to be is a
+shortcut people stop reaching for.
+
+This is the way back out of anything the editor has already rendered. Type
+`| a | b |` and a row of dashes and it becomes a table immediately; ⌘⇧M is how
+you get back to add the colon that left-aligns a column. For anyone
 who thinks in markdown this beats any amount of ribbon — retyping a table's
 row is a line of pipes rather than eight cell edits.
 

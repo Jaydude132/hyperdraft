@@ -7,25 +7,31 @@ import { isInsideNode } from '../editor/selection';
 import { TableSizePicker } from './TableSizePicker';
 import { AttributePicker } from './AttributePicker';
 import {
+  IconAlignCenter,
+  IconAlignJustify,
+  IconAlignLeft,
+  IconAlignRight,
+  IconBorders,
   IconBulletList,
   IconCallout,
   IconCode,
   IconCodeBlock,
-  IconHighlight,
-  IconLink,
-  IconOpen,
-  IconImage,
-  IconNewDoc,
-  IconOrderedList,
-  IconTaskList,
-  IconPageBreak,
   IconExport,
+  IconHighlight,
+  IconImage,
+  IconLink,
+  IconMarkdown,
+  IconNewDoc,
+  IconOpen,
+  IconOrderedList,
+  IconPageBreak,
   IconQuote,
   IconRedo,
   IconRule,
   IconSave,
   IconSvgBlock,
   IconTable,
+  IconTaskList,
   IconUndo,
 } from './icons';
 
@@ -46,6 +52,7 @@ type ToolbarProps = {
   onOpen: () => void;
   onSave: () => void;
   onExport: (anchor: { x: number; y: number }) => void;
+  onStyles: () => void;
   onEditMarkup: () => void;
   /** Only to re-read the theme's own font when the document theme changes. */
   theme: string;
@@ -103,7 +110,7 @@ const BLOCK_STYLES: { value: string; label: string }[] = [
   { value: 'codeBlock', label: 'Code' },
 ];
 
-export function Toolbar({ editor, onNew, onOpen, onSave, onExport, onEditMarkup, theme }: ToolbarProps) {
+export function Toolbar({ editor, onNew, onOpen, onSave, onExport, onStyles, onEditMarkup, theme }: ToolbarProps) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const pickerHost = useRef<HTMLSpanElement>(null);
 
@@ -122,6 +129,10 @@ export function Toolbar({ editor, onNew, onOpen, onSave, onExport, onEditMarkup,
       callout: e.isActive('callout'),
       rawSelected: e.isActive('rawHtml'),
       taskList: e.isActive('taskList'),
+      alignLeft: e.isActive({ textAlign: 'left' }),
+      alignCenter: e.isActive({ textAlign: 'center' }),
+      alignRight: e.isActive({ textAlign: 'right' }),
+      alignJustify: e.isActive({ textAlign: 'justify' }),
       fontFamily: (e.getAttributes('textStyle').fontFamily as string) || '',
       fontSize: (e.getAttributes('textStyle').fontSize as string) || '',
       canUndo: e.can().undo(),
@@ -316,6 +327,23 @@ export function Toolbar({ editor, onNew, onOpen, onSave, onExport, onEditMarkup,
       <TbButton title="Task list" active={state.taskList} onClick={() => editor.chain().focus().toggleTaskList().run()}>
         <IconTaskList />
       </TbButton>
+      <div className="tb-sep" />
+
+      <TbButton title="Align left" active={state.alignLeft} onClick={() => editor.chain().focus().setTextAlign('left').run()}>
+        <IconAlignLeft />
+      </TbButton>
+      <TbButton title="Centre" active={state.alignCenter} onClick={() => editor.chain().focus().setTextAlign('center').run()}>
+        <IconAlignCenter />
+      </TbButton>
+      <TbButton title="Align right" active={state.alignRight} onClick={() => editor.chain().focus().setTextAlign('right').run()}>
+        <IconAlignRight />
+      </TbButton>
+      <TbButton title="Justify" active={state.alignJustify} onClick={() => editor.chain().focus().setTextAlign('justify').run()}>
+        <IconAlignJustify />
+      </TbButton>
+
+      <div className="tb-sep" />
+
       <TbButton title="Block quote" onClick={() => editor.chain().focus().toggleBlockquote().run()}>
         <IconQuote />
       </TbButton>
@@ -361,6 +389,17 @@ export function Toolbar({ editor, onNew, onOpen, onSave, onExport, onEditMarkup,
           {'</>'}
         </span>
       </TbButton>
+
+      <div className="tb-sep" />
+
+      <TbButton title="Edit as markdown — ⌘⇧M" onClick={() => editor.chain().focus().toggleMarkdownSource().run()}>
+        <IconMarkdown />
+      </TbButton>
+      <TbButton title="Styles for this block — ⌘⇧S" onClick={onStyles}>
+        <IconBorders />
+      </TbButton>
+
+      <div className="tb-sep" />
 
       <TbButton title="Page break (Cmd+Enter)" onClick={() => editor.chain().focus().insertPageBreak().run()}>
         <IconPageBreak />

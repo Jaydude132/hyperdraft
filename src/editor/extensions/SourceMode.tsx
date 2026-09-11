@@ -1,5 +1,5 @@
 import { Extension } from '@tiptap/core';
-import { Plugin, PluginKey } from '@tiptap/pm/state';
+import { Plugin, PluginKey, TextSelection } from '@tiptap/pm/state';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
 import type { EditorState, Transaction } from '@tiptap/pm/state';
 import type { EditorView } from '@tiptap/pm/view';
@@ -34,8 +34,15 @@ type SourceModeState = {
   text: string;
 };
 
-/** Blocks worth editing as text. A paragraph is already text. */
+/**
+ * What can be edited as markdown. Paragraphs and headings are in the list even
+ * though they are already text: their *marks* are markdown too, and a
+ * shortcut that does nothing where the caret happens to be is a shortcut
+ * people stop reaching for.
+ */
 const EDITABLE = new Set([
+  'paragraph',
+  'heading',
   'table',
   'codeBlock',
   'bulletList',
@@ -108,6 +115,9 @@ function apply(view: EditorView, text: string): void {
 
   const tr = view.state.tr.replaceWith(from, to, replacement);
   tr.setMeta(sourceModeKey, { pos: null, text: '' });
+  // The caret belongs in what was just written, not wherever it was before —
+  // otherwise a second ⌘⇧M edits some other block entirely.
+  tr.setSelection(TextSelection.near(tr.doc.resolve(Math.min(from + 1, tr.doc.content.size))));
   view.dispatch(tr);
   view.focus();
 }
@@ -183,8 +193,41 @@ function editorFor(view: EditorView, text: string, onApply: (value: string) => v
   return wrap;
 }
 
+declare module '@tiptap/core' {
+  interface Commands<ReturnType> {
+    sourceMode: {
+      /** Show the block under the caret as markdown, or put it back. */
+      toggleMarkdownSource: () => ReturnType;
+    };
+  }
+}
+
 export const SourceMode = Extension.create({
   name: 'sourceMode',
+
+  addCommands() {
+    return {
+      toggleMarkdownSource:
+        () =>
+        ({ state, dispatch }) => {
+          const current = sourceModeKey.getState(state);
+          if (current && current.pos !== null) {
+            dispatch?.(close(state));
+            return true;
+          }
+          const block = blockAt(state, state.selection.from);
+          if (!block) return false;
+          dispatch?.(open(state, block.pos));
+          return true;
+        },
+    };
+  },
+
+  addKeyboardShortcuts() {
+    return {
+      'Mod-Shift-m': () => this.editor.commands.toggleMarkdownSource(),
+    };
+  },
 
   addProseMirrorPlugins() {
     return [

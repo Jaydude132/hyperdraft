@@ -354,3 +354,38 @@ export const IconClose = ({ size = 16 }: IconProps) => (
     <path d="M3.6 3.6l8.8 8.8M12.4 3.6l-8.8 8.8" />
   </svg>
 );
+
+const alignLines = (widths: number[]) =>
+  widths.map((width, index) => `M2.6 ${3.6 + index * 2.7}h${width}`).join('');
+
+export const IconAlignLeft = ({ size = 16 }: IconProps) => (
+  <svg {...base(size)}>
+    <path d={alignLines([10.8, 6.6, 10.8, 6.6])} />
+  </svg>
+);
+
+export const IconAlignCenter = ({ size = 16 }: IconProps) => (
+  <svg {...base(size)}>
+    <path d="M2.6 3.6h10.8M4.7 6.3h6.6M2.6 9h10.8M4.7 11.7h6.6" />
+  </svg>
+);
+
+export const IconAlignRight = ({ size = 16 }: IconProps) => (
+  <svg {...base(size)}>
+    <path d="M2.6 3.6h10.8M6.8 6.3h6.6M2.6 9h10.8M6.8 11.7h6.6" />
+  </svg>
+);
+
+export const IconAlignJustify = ({ size = 16 }: IconProps) => (
+  <svg {...base(size)}>
+    <path d={alignLines([10.8, 10.8, 10.8, 10.8])} />
+  </svg>
+);
+
+export const IconMarkdown = ({ size = 16 }: IconProps) => (
+  <svg {...base(size)}>
+    <rect x="1.8" y="3.4" width="12.4" height="9.2" rx="1.7" />
+    <path d="M4.2 10.4V6.1l2 2.4 2-2.4v4.3" strokeWidth="1.3" />
+    <path d="M10.8 6.1v4.3M9.3 8.9l1.5 1.5 1.5-1.5" strokeWidth="1.3" />
+  </svg>
+);

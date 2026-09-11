@@ -3,6 +3,7 @@ import type { MenuEntry } from './ContextMenu';
 import { isInsideNode } from '../editor/selection';
 import {
   IconBorders,
+  IconMarkdown,
   IconCallout,
   IconCodeBlock,
   IconColumnDelete,
@@ -195,6 +196,25 @@ export function buildContextMenu(editor: Editor, actions: MenuActions): MenuEntr
       },
     );
   }
+
+  entries.push(
+    { kind: 'separator' },
+    {
+      kind: 'item',
+      label: 'Edit as markdown…',
+      hint: '⌘⇧M',
+      icon: <IconMarkdown size={14} />,
+      disabled: !editor.can().toggleMarkdownSource(),
+      run: () => editor.chain().focus().toggleMarkdownSource().run(),
+    },
+    {
+      kind: 'item',
+      label: 'Styles…',
+      hint: '⌘⇧S',
+      icon: <IconBorders size={14} />,
+      run: actions.openStyles,
+    },
+  );
 
   if (isInsideNode(editor, 'codeBlock')) {
     const dark = (editor.getAttributes('codeBlock').codeTheme ?? 'dark') !== 'light';
