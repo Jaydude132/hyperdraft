@@ -76,6 +76,17 @@
     box-shadow: none !important;
   }
 
+  /* Fills, tints and shadows are part of the document, not decoration the
+     browser may drop. Chrome's dialog defaults "Background graphics" to off;
+     `exact` says this document means them. */
+  .hwp-doc,
+  .hwp-doc *,
+  .hwp-doc *::before,
+  .hwp-doc *::after {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
   /* Break rules — the print-side counterpart of the screen measurement. */
   .hwp-doc h1,
   .hwp-doc h2,
