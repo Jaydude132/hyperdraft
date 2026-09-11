@@ -268,6 +268,17 @@ exporting gives the page *no* margin and supplies the document's own from
 inside the flow, so there is nowhere for that furniture to go. In the desktop
 shell the export writes the file outright and no dialog appears at all.
 
+**In a browser, exporting copies the document into a window of its own.** The
+editor used to be restyled in place for the length of a print — a class on
+`<html>`, a stylesheet appended, the geometry re-paginated, all of it undone
+afterwards. That works, but it puts the print dialog on top of a live React
+application with a resize observer, a measurement loop and, in development, a
+hot-reload socket; anything that moves the page while the preview is rendering
+takes the preview with it. The copy is of the live DOM, not a re-render, so the
+measured spacers and the mask come along and a paged export still lands on the
+boundaries the screen shows. Nothing in the editor is touched and there is
+nothing to restore. See `io/exportWindow.ts`.
+
 **The page box follows the paper.** `@page` accepts no custom properties, so
 the rule is rewritten whenever the size changes (`io/pageBox.ts`); left
 hardcoded it said `Letter` forever, and choosing A4 gave a document measured
@@ -464,9 +475,39 @@ levels, and then an eyebrow — level six is too small to compete as a heading,
 so it earns its place by looking different rather than merely smaller (small,
 uppercase, letter-spaced, faint).
 
+## Editing a block as markdown
+
+Ctrl- or Cmd-click a table, list, section, quote or code block and it is
+replaced on screen by the markdown it would be written as. Edit the text,
+press ⌘↵ (or Apply), and it renders again; Esc leaves it as it was. For anyone
+who thinks in markdown this beats any amount of ribbon — retyping a table's
+row is a line of pipes rather than eight cell edits.
+
+The block is not replaced while it is being edited. It stays in the document,
+hidden by a decoration, with the source shown in a widget beside it, so an
+abandoned edit costs nothing and the undo history sees one change rather than
+every keystroke — one ⌘Z puts the original table back.
+
+The conversion is the pair the rest of the editor already uses: out through
+`documentToMarkdown`, back in through the paste path. So this doubles as the
+honest answer to "what does this look like as markdown?" — if a block survives
+the round trip, the markdown export can represent it. See
+`editor/extensions/SourceMode.tsx`.
+
 ## Drawing
 
-The markup editor (**Edit block markup**) has an **SVG help** panel beside it:
+The markup editor lays the markup out on the way in — one element per line,
+indented by depth, short text kept on the line that opens it — because a raw
+block arrives from the document as one unbroken line, and editing that is
+miserable. It formats by walking the parsed DOM rather than by matching angle
+brackets, so it cannot produce markup that differs from what it was given, and
+content whose whitespace matters is passed through untouched. The text is
+syntax highlighted by the same highlighter the document uses for code blocks:
+a transparent textarea over a painted copy, which keeps a real editing surface
+rather than trading it for a contenteditable's selection bugs. See
+`io/formatMarkup.ts` and `components/MarkupEditor.tsx`.
+
+It also has an **SVG help** panel beside it:
 the coordinate space, the shape elements, the one-letter path grammar, the
 painted attributes, and four snippets — a titled panel, a flow with an arrow, a
 bar chart, an inline icon — that go in at the caret rather than at the end, so

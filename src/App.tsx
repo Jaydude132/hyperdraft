@@ -19,12 +19,15 @@ import { buildContextMenu } from './components/documentMenu';
 import { StylePanel } from './components/StylePanel';
 import { TableGrips } from './components/TableGrips';
 import { TabStrip } from './components/TabStrip';
+import { AttributePicker } from './components/AttributePicker';
 import { documentToMarkdown } from './editor/markdown';
 import { PageSheets } from './components/PageSheets';
 import { IconInfo, IconMark } from './components/icons';
 import { SvgCheatSheet } from './components/SvgCheatSheet';
+import { MarkupEditor } from './components/MarkupEditor';
 import { Callout } from './editor/extensions/Callout';
 import { MarkdownPaste } from './editor/extensions/MarkdownPaste';
+import { SourceMode } from './editor/extensions/SourceMode';
 import { MarkdownRules } from './editor/extensions/MarkdownRules';
 import { MarkdownTable } from './editor/extensions/MarkdownTable';
 import { CodeBlock } from './editor/extensions/CodeBlock';
@@ -40,6 +43,7 @@ import { openDocument, saveDocument, saveMarkdown } from './io/documentFile';
 import type { DocumentHandle, DocumentLayout } from './io/documentFile';
 import { desktop } from './io/desktop';
 import { setPageBox } from './io/pageBox';
+import { formatMarkup } from './io/formatMarkup';
 import { exportPdf, printAndWait } from './io/exportPdf';
 
 import './styles/document.css';
@@ -51,6 +55,16 @@ const THEMES = [
 ];
 
 const EMPTY_DOCUMENT = '<p></p>';
+
+const LAYOUTS = [
+  { value: 'continuous', label: 'Continuous' },
+  { value: 'paged', label: 'Pages' },
+];
+
+const PAPER_SIZES = [
+  { value: 'Letter', label: 'Letter' },
+  { value: 'A4', label: 'A4' },
+];
 
 /**
  * One open document.
@@ -157,6 +171,7 @@ export default function App() {
       MarkdownRules,
       MarkdownTable,
       MarkdownPaste,
+      SourceMode,
       PageBreak,
       RawHtml,
       Pagination.configure({
@@ -416,7 +431,7 @@ export default function App() {
 
   const openMarkupEditor = useCallback(() => {
     if (!editor) return;
-    setMarkupDraft(String(editor.getAttributes('rawHtml').html ?? ''));
+    setMarkupDraft(formatMarkup(String(editor.getAttributes('rawHtml').html ?? '')));
     markupDialog.current?.showModal();
   }, [editor]);
 
@@ -439,7 +454,7 @@ export default function App() {
         entries: buildContextMenu(editor, {
           openStyles: () => setStylesOpen(true),
           openMarkup: () => {
-            setMarkupDraft(String(editor.getAttributes('rawHtml').html ?? ''));
+            setMarkupDraft(formatMarkup(String(editor.getAttributes('rawHtml').html ?? '')));
             markupDialog.current?.showModal();
           },
         }),
@@ -512,38 +527,31 @@ export default function App() {
           onChange={(event) => patchActive({ title: event.target.value, dirty: true })}
         />
         <div className="app-titlebar-spacer" />
-        <select
-          className="tb-select"
+
+        {/* The same picker the ribbon uses. These were the last native selects
+            in the application, and being unlabelled they also asked you to
+            guess what "Report", "Continuous" and "Letter" governed. */}
+        <AttributePicker
+          options={THEMES}
           value={theme}
-          aria-label="Document theme"
-          onChange={(event) => patchActive({ theme: event.target.value, dirty: true })}
-        >
-          {THEMES.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-        <select
-          className="tb-select"
+          label="Document theme"
+          width={124}
+          onSelect={(value) => patchActive({ theme: value, dirty: true })}
+        />
+        <AttributePicker
+          options={LAYOUTS}
           value={layout}
-          aria-label="Layout"
-          onChange={(event) =>
-            patchActive({ layout: event.target.value as DocumentLayout, dirty: true })
-          }
-        >
-          <option value="continuous">Continuous</option>
-          <option value="paged">Pages</option>
-        </select>
-        <select
-          className="tb-select"
+          label="Layout — continuous, or split into pages"
+          width={124}
+          onSelect={(value) => patchActive({ layout: value as DocumentLayout, dirty: true })}
+        />
+        <AttributePicker
+          options={PAPER_SIZES}
           value={pageSize}
-          aria-label="Page size"
-          onChange={(event) => patchActive({ pageSize: event.target.value as PageSizeName })}
-        >
-          <option value="Letter">Letter</option>
-          <option value="A4">A4</option>
-        </select>
+          label="Paper size"
+          width={104}
+          onSelect={(value) => patchActive({ pageSize: value as PageSizeName })}
+        />
       </div>
 
       {tabs.length > 1 ? (
@@ -607,7 +615,8 @@ export default function App() {
       </div>
 
       <div className="app-statusbar">
-        <span>
+        <span data-tip={layout === 'continuous' ? 'Pages this would print to' : undefined}>
+          {layout === 'continuous' ? '≈ ' : ''}
           <strong>{pageCount}</strong> {pageCount === 1 ? 'page' : 'pages'}
         </span>
         <span>
@@ -647,12 +656,7 @@ export default function App() {
           </div>
 
           <div className="app-dialog-body">
-            <textarea
-              ref={markupField}
-              value={markupDraft}
-              spellCheck={false}
-              onChange={(event) => setMarkupDraft(event.target.value)}
-            />
+            <MarkupEditor value={markupDraft} onChange={setMarkupDraft} inputRef={markupField} />
             {cheatOpen ? <SvgCheatSheet onInsert={insertMarkup} /> : null}
           </div>
 

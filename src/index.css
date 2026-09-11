@@ -422,21 +422,74 @@ body {
 .app-dialog::backdrop { background: rgba(12, 16, 24, 0.32); }
 .app-dialog h2 { margin: 0 0 4px; font-size: 14px; font-weight: 600; }
 .app-dialog p { margin: 0 0 12px; font-size: 12px; color: var(--chrome-ink-faint); }
-.app-dialog textarea {
-  width: 100%;
+/* --- Markup editor ----------------------------------------------------------
+   A textarea with its own text turned transparent, and a highlighted copy
+   painted behind it. The two layers must agree on every metric that affects
+   where a glyph lands, so they share one rule. */
+
+.markup-editor {
+  position: relative;
   height: 300px;
-  resize: vertical;
-  font-family: "SF Mono", ui-monospace, Menlo, monospace;
-  font-size: 12px;
-  line-height: 1.55;
-  padding: 10px 12px;
   border: 1px solid var(--chrome-line);
   border-radius: 8px;
   background: var(--chrome-sunken);
-  color: var(--chrome-ink);
-  tab-size: 2;
+  overflow: hidden;
 }
-.app-dialog textarea:focus { outline: none; border-color: var(--accent); }
+.markup-editor:focus-within { border-color: var(--accent); }
+
+.markup-paint,
+.markup-input {
+  margin: 0;
+  padding: 10px 12px;
+  border: 0;
+  font-family: "SF Mono", ui-monospace, Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.55;
+  tab-size: 2;
+  white-space: pre;
+  overflow: auto;
+  width: 100%;
+  height: 100%;
+}
+.markup-paint {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  color: var(--chrome-ink);
+  overflow: hidden;
+}
+.markup-input {
+  position: relative;
+  display: block;
+  resize: none;
+  background: transparent;
+  color: transparent;
+  caret-color: var(--chrome-ink);
+}
+.markup-input:focus { outline: none; }
+.markup-input::selection { background: var(--accent-soft); color: transparent; }
+
+/* The document's palette is scoped to .hwp-doc, and this is chrome. Same
+   token names, colours drawn from the interface instead of the page. */
+.markup-paint .hljs-comment,
+.markup-paint .hljs-quote { color: var(--chrome-ink-faint); font-style: italic; }
+.markup-paint .hljs-name,
+.markup-paint .hljs-selector-tag,
+.markup-paint .hljs-keyword { color: var(--accent); }
+.markup-paint .hljs-string { color: #1e8449; }
+.markup-paint .hljs-attr,
+.markup-paint .hljs-attribute { color: #8a5a12; }
+.markup-paint .hljs-number,
+.markup-paint .hljs-literal { color: #7b3fbf; }
+.markup-paint .hljs-meta { color: var(--chrome-ink-faint); }
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-ui="light"]) .markup-paint .hljs-string { color: #7ec89a; }
+  :root:not([data-ui="light"]) .markup-paint .hljs-attr,
+  :root:not([data-ui="light"]) .markup-paint .hljs-attribute { color: #e2b877; }
+  :root:not([data-ui="light"]) .markup-paint .hljs-number,
+  :root:not([data-ui="light"]) .markup-paint .hljs-literal { color: #c9a6f5; }
+}
 .app-dialog--wide { width: min(1020px, 94vw); }
 .app-dialog-head {
   display: flex;
@@ -447,7 +500,7 @@ body {
 .app-dialog-head .tb-btn { height: 28px; padding: 0 10px; gap: 6px; border-color: var(--chrome-line); }
 .app-dialog-head .tb-btn.is-on { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
 .app-dialog-body { display: flex; align-items: stretch; gap: 14px; }
-.app-dialog-body textarea { flex: 1 1 auto; min-width: 0; }
+.app-dialog-body .markup-editor { flex: 1 1 auto; min-width: 0; }
 
 /* --- SVG cheat sheet -------------------------------------------------------
    Sits beside the markup editor and stretches to whatever height the textarea
@@ -1347,3 +1400,70 @@ body {
 }
 .tb-input::placeholder { color: var(--chrome-ink-faint); }
 .tb-input:focus { outline: none; border-color: var(--accent); }
+
+/* --- Editing a block as markdown ---------------------------------------------
+   Ctrl- or Cmd-click a table, list, section or code block and it is replaced
+   on screen by the markdown it would be written as. The block itself stays in
+   the document, hidden, until the edit is applied — so an abandoned edit costs
+   nothing and the undo history sees one change rather than every keystroke. */
+
+.hwp-source-hidden { display: none !important; }
+
+.hwp-source {
+  margin: 0 0 0.9em;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: var(--chrome-raised);
+  box-shadow: 0 6px 20px rgba(20, 24, 33, 0.12);
+  overflow: hidden;
+}
+.hwp-source-text {
+  display: block;
+  width: 100%;
+  padding: 11px 13px;
+  border: 0;
+  resize: vertical;
+  background: none;
+  color: var(--chrome-ink);
+  font-family: "SF Mono", ui-monospace, Menlo, monospace;
+  font-size: 12.5px;
+  line-height: 1.6;
+  tab-size: 2;
+}
+.hwp-source-text:focus { outline: none; }
+
+.hwp-source-bar {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 9px 8px;
+  border-top: 1px solid var(--chrome-line);
+  background: var(--chrome);
+}
+.hwp-source-hint {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--ui-font);
+  font-size: 11px;
+  color: var(--chrome-ink-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hwp-source-btn {
+  height: 26px;
+  padding: 0 11px;
+  border: 1px solid var(--chrome-line);
+  border-radius: 6px;
+  background: var(--chrome-raised);
+  color: var(--chrome-ink);
+  font-family: var(--ui-font);
+  font-size: 11.5px;
+  cursor: pointer;
+}
+.hwp-source-btn:hover { background: var(--chrome-hover); }
+.hwp-source-btn--primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}

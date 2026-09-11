@@ -34,7 +34,9 @@ await page.waitForTimeout(1200);
 
 // Documents are continuous by default now, which has no page breaks to check.
 // Everything below is about the paged layout, so switch into it first.
-await page.selectOption('.app-titlebar select[aria-label="Layout"]', 'paged');
+await page.click('.app-titlebar button[data-tip^="Layout"]');
+await page.waitForTimeout(300);
+await page.click('.tb-picker-option:text-is("Pages")');
 await page.waitForTimeout(2000);
 
 

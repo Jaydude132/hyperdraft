@@ -45,6 +45,7 @@
   .hwp-sheet-layer,
   .hwp-mask-layer,
   .hwp-grip-layer,
+  .hwp-source,
   .hwp-page-spacer {
     display: none !important;
   }

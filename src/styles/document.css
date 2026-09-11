@@ -189,9 +189,15 @@
   background: var(--code-bg);
   border: 1px solid var(--code-rule);
   border-radius: var(--code-r-tl, 10px) var(--code-r-tr, 10px) var(--code-r-br, 10px) var(--code-r-bl, 10px);
+  --code-round: max(
+    var(--code-r-tl, 10px), var(--code-r-tr, 10px),
+    var(--code-r-br, 10px), var(--code-r-bl, 10px)
+  );
   /* 30px of header band, reserved in px so the editor's controls and the
-     saved file's labels cannot drift apart. */
-  padding: 30px 1.1em 0.95em;
+     saved file's labels cannot drift apart. The sides step back from a large
+     radius the way a section's do. */
+  padding: max(30px, calc(var(--code-round) * 0.5 + 18px)) max(1.1em, calc(var(--code-round) * 0.5))
+    max(0.95em, calc(var(--code-round) * 0.42));
   margin-bottom: 0.8em;
   overflow-x: auto;
   tab-size: 4;
@@ -292,7 +298,15 @@
 .hwp-doc .hwp-callout {
   border: 1px solid var(--rule);
   border-radius: var(--sec-r-tl, 12px) var(--sec-r-tr, 12px) var(--sec-r-br, 12px) var(--sec-r-bl, 12px);
-  padding: 0.95em 1.15em;
+  /* Padding grows with the roundest corner. A curve cuts diagonally across the
+     box, so at a large radius the first and last lines run into it — the text
+     has to step back by roughly half the radius to stay clear. Below about
+     30px the ordinary padding is already larger and nothing changes. */
+  --sec-round: max(
+    var(--sec-r-tl, 12px), var(--sec-r-tr, 12px),
+    var(--sec-r-br, 12px), var(--sec-r-bl, 12px)
+  );
+  padding: max(0.95em, calc(var(--sec-round) * 0.42)) max(1.15em, calc(var(--sec-round) * 0.5));
   margin-bottom: 0.85em;
   background: #fff;
   break-inside: avoid;
@@ -473,6 +487,17 @@
 .hwp-doc tr:last-child > *:last-child { border-bottom-right-radius: max(0px, calc(var(--tbl-c-br, 10px) - var(--tbl-bw, 1px))); }
 .hwp-doc tr:last-child > *:first-child { border-bottom-left-radius: max(0px, calc(var(--tbl-c-bl, 10px) - var(--tbl-bw, 1px))); }
 
+/* Text steps in from a rounded corner — and the whole column steps with it.
+   Indenting only the corner cells would leave the column's text edge ragged,
+   which is a worse fault than the crowding it fixes: the eye reads the column
+   as a line, not as three separate cells. */
+.hwp-doc tr > *:first-child {
+  padding-left: max(0.7em, calc(max(var(--tbl-c-tl, 10px), var(--tbl-c-bl, 10px)) * 0.5));
+}
+.hwp-doc tr > *:last-child {
+  padding-right: max(0.7em, calc(max(var(--tbl-c-tr, 10px), var(--tbl-c-br, 10px)) * 0.5));
+}
+
 /* --- Elevation -------------------------------------------------------------
    Shared by every block that can be lifted, so two elevated things on a page
    agree with each other. Printed as well as drawn: a shadow that vanishes on
@@ -490,6 +515,19 @@
 }
 .hwp-doc [data-shadow="float"] {
   box-shadow: 0 6px 14px rgba(20, 24, 33, 0.1), 0 20px 44px rgba(20, 24, 33, 0.16);
+}
+
+/* A dark block eats its own shadow: the eye reads the edge of the block, not
+   the grey under it. Dark code blocks get a deeper, tighter shadow so the lift
+   is visible against their own weight. */
+.hwp-doc pre[data-code-theme="dark"][data-shadow="soft"] {
+  box-shadow: 0 2px 4px rgba(10, 14, 22, 0.22), 0 4px 10px rgba(10, 14, 22, 0.18);
+}
+.hwp-doc pre[data-code-theme="dark"][data-shadow="lift"] {
+  box-shadow: 0 3px 6px rgba(10, 14, 22, 0.3), 0 10px 24px rgba(10, 14, 22, 0.26);
+}
+.hwp-doc pre[data-code-theme="dark"][data-shadow="float"] {
+  box-shadow: 0 8px 16px rgba(10, 14, 22, 0.34), 0 24px 50px rgba(10, 14, 22, 0.34);
 }
 
 /* A table's shadow belongs to the table, but `border-collapse: separate` means

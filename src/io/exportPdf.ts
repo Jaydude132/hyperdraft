@@ -16,6 +16,7 @@
  */
 
 import { desktop } from './desktop';
+import { exportThroughWindow } from './exportWindow';
 import { pageBoxCss } from './pageBox';
 import { PAGE_SIZES } from '../editor/geometry';
 import type { PageSizeName } from '../editor/geometry';
@@ -165,6 +166,13 @@ export async function exportPdf({
   pageSize,
   layout,
 }: ExportHooks): Promise<string | null> {
+  /* In a browser the document is copied into a window of its own rather than
+     the editor being restyled around the print dialog. The shell has no dialog
+     to protect — it renders the page it is already showing straight to bytes —
+     so it keeps the in-place path, which is also the one the pagination checks
+     drive. */
+  if (!desktop()) return exportThroughWindow({ title, pageSize, layout });
+
   const style = document.createElement('style');
   style.id = STYLE_ID;
 
