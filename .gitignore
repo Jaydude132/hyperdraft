@@ -23,3 +23,6 @@ dist-ssr
 *.sln
 *.sw?
 artifacts/
+
+# Stray screenshots from test scripts run without an output directory.
+undefined/
